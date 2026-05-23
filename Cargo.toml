@@ -7,6 +7,10 @@ description = "A CLI + TUI tool for collecting wallpapers from multiple sources"
 license = "MIT"
 repository = "https://github.com/yourusername/wallpaper-magpie"
 
+[lib]
+name = "wallpaper_magpie"
+path = "src/lib.rs"
+
 [[bin]]
 name = "wallpaper-magpie"
 path = "src/main.rs"
