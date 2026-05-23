@@ -1,10 +1,14 @@
 use anyhow::Result;
 use clap::Parser;
 
-mod cli;
-mod config;
-mod error;
-mod models;
+pub mod app;
+pub mod event;
+pub mod ui;
+
+pub mod cli;
+pub mod config;
+pub mod error;
+pub mod models;
 
 use cli::{Cli, Commands};
 
