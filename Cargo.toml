@@ -1,0 +1,33 @@
+[package]
+name = "wallpaper-magpie"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A CLI + TUI tool for collecting wallpapers from multiple sources"
+license = "MIT"
+repository = "https://github.com/yourusername/wallpaper-magpie"
+
+[[bin]]
+name = "wallpaper-magpie"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+ratatui = "0.24"
+crossterm = "0.27"
+config = "0.13"
+toml = "0.8"
+anyhow = "1.0"
+thiserror = "1.0"
+indicatif = "0.17"
+owo-colors = "4"
+dirs = "5"
+chrono = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockito = "1.2"
