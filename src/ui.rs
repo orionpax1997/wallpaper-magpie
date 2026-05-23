@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
@@ -58,10 +58,127 @@ fn draw_select_source(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_widget(sources, chunks[1]);
 }
 
-fn draw_configure_filters(_f: &mut Frame<'_>, _app: &App, _area: Rect) {
+fn draw_configure_filters(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+    
+    let title = Paragraph::new(format!("步骤 2/3: 配置筛选条件 ({})", 
+        app.selected_source.as_deref().unwrap_or("unknown")))
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::BOTTOM));
+    f.render_widget(title, chunks[0]);
+    
+    let filters = vec![
+        ("query", "关键词", app.search_params.query.clone()),
+        ("resolution", "分辨率", app.search_params.resolution.clone().unwrap_or_default()),
+        ("color", "颜色", app.search_params.color.clone().unwrap_or_default()),
+        ("orientation", "方向", app.search_params.orientation.clone().unwrap_or_default()),
+        ("sort", "排序", app.search_params.sort.map(|s| s.as_str().to_string()).unwrap_or_default()),
+        ("limit", "数量", app.search_params.limit.to_string()),
+    ];
+    
+    let filter_text: Vec<Line> = filters.iter()
+        .enumerate()
+        .map(|(i, (key, label, value))| {
+            let editing = app.editing_filter.as_ref() == Some(&key.to_string());
+            let prefix = if editing { "▸ " } else { "  " };
+            let display_value = if editing {
+                app.edit_buffer.clone()
+            } else if value.is_empty() {
+                "(未设置)".to_string()
+            } else {
+                value.clone()
+            };
+            
+            Line::from(vec![
+                Span::styled(format!("{}{}. {}: ", prefix, i + 1, label), 
+                    Style::default().fg(Color::White)),
+                Span::styled(display_value, 
+                    Style::default().fg(Color::Yellow)),
+            ])
+        })
+        .collect();
+    
+    let filters_widget = Paragraph::new(filter_text)
+        .block(Block::default().borders(Borders::ALL).title("筛选条件"));
+    f.render_widget(filters_widget, chunks[1]);
+    
+    let help = Paragraph::new("Tab/↑↓: 切换字段 | Enter: 编辑/确认 | Esc: 取消 | q: 退出")
+        .style(Style::default().fg(Color::Gray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[2]);
 }
 
-fn draw_confirm(_f: &mut Frame<'_>, _app: &App, _area: Rect) {
+fn draw_confirm(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+    
+    let title = Paragraph::new("步骤 3/3: 确认并下载")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::BOTTOM));
+    f.render_widget(title, chunks[0]);
+    
+    let confirm_text = vec![
+        Line::from(vec![
+            Span::styled("来源: ", Style::default().fg(Color::White)),
+            Span::styled(app.selected_source.as_deref().unwrap_or("unknown"), 
+                Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("关键词: ", Style::default().fg(Color::White)),
+            Span::styled(&app.search_params.query, Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("分辨率: ", Style::default().fg(Color::White)),
+            Span::styled(app.search_params.resolution.as_deref().unwrap_or("不限"), 
+                Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("颜色: ", Style::default().fg(Color::White)),
+            Span::styled(app.search_params.color.as_deref().unwrap_or("不限"), 
+                Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("方向: ", Style::default().fg(Color::White)),
+            Span::styled(app.search_params.orientation.as_deref().unwrap_or("不限"), 
+                Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("排序: ", Style::default().fg(Color::White)),
+            Span::styled(app.search_params.sort.map(|s| s.as_str()).unwrap_or("默认"), 
+                Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("数量: ", Style::default().fg(Color::White)),
+            Span::styled(app.search_params.limit.to_string(), Style::default().fg(Color::Yellow)),
+        ]),
+    ];
+    
+    let confirm_widget = Paragraph::new(confirm_text)
+        .block(Block::default().borders(Borders::ALL).title("下载确认"));
+    f.render_widget(confirm_widget, chunks[1]);
+    
+    let help = Paragraph::new("Enter: 确认下载 | Esc: 返回 | q: 退出")
+        .style(Style::default().fg(Color::Gray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[2]);
 }
 
 fn draw_downloading(_f: &mut Frame<'_>, _app: &App, _area: Rect) {

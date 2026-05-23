@@ -1,4 +1,4 @@
-use crate::models::SearchParams;
+use crate::models::{SearchParams, SortOrder};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppStep {
@@ -16,6 +16,9 @@ pub struct App {
     pub search_params: SearchParams,
     pub available_sources: Vec<String>,
     pub current_filter_index: usize,
+    pub filter_values: std::collections::HashMap<String, String>,
+    pub editing_filter: Option<String>,
+    pub edit_buffer: String,
     pub message: Option<String>,
     pub error_message: Option<String>,
     pub should_quit: bool,
@@ -33,6 +36,9 @@ impl Default for App {
                 "wallhaven".to_string(),
             ],
             current_filter_index: 0,
+            filter_values: std::collections::HashMap::new(),
+            editing_filter: None,
+            edit_buffer: String::new(),
             message: None,
             error_message: None,
             should_quit: false,
@@ -79,5 +85,44 @@ impl App {
     
     pub fn quit(&mut self) {
         self.should_quit = true;
+    }
+
+    pub fn start_editing_filter(&mut self, filter_name: &str) {
+        self.editing_filter = Some(filter_name.to_string());
+        self.edit_buffer = self.filter_values.get(filter_name).cloned().unwrap_or_default();
+    }
+
+    pub fn commit_filter_edit(&mut self) {
+        if let Some(ref filter) = self.editing_filter {
+            self.filter_values.insert(filter.clone(), self.edit_buffer.clone());
+            
+            match filter.as_str() {
+                "query" => self.search_params.query = self.edit_buffer.clone(),
+                "resolution" => self.search_params.resolution = Some(self.edit_buffer.clone()),
+                "color" => self.search_params.color = Some(self.edit_buffer.clone()),
+                "orientation" => self.search_params.orientation = Some(self.edit_buffer.clone()),
+                "limit" => {
+                    if let Ok(val) = self.edit_buffer.parse::<u32>() {
+                        self.search_params.limit = val;
+                    }
+                }
+                "sort" => {
+                    self.search_params.sort = match self.edit_buffer.as_str() {
+                        "latest" => Some(SortOrder::Latest),
+                        "popular" => Some(SortOrder::Popular),
+                        "relevant" => Some(SortOrder::Relevant),
+                        "random" => Some(SortOrder::Random),
+                        _ => None,
+                    };
+                }
+                _ => {}
+            }
+        }
+        self.editing_filter = None;
+    }
+
+    pub fn cancel_filter_edit(&mut self) {
+        self.editing_filter = None;
+        self.edit_buffer.clear();
     }
 }
