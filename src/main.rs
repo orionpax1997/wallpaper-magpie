@@ -3,7 +3,7 @@ use clap::Parser;
 
 mod cli;
 mod config;
-mod error;
+pub mod error;
 mod models;
 
 use cli::Cli;
