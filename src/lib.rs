@@ -1,6 +1,7 @@
 pub mod app;
 pub mod cli;
 pub mod config;
+pub mod download;
 pub mod error;
 pub mod event;
 pub mod models;

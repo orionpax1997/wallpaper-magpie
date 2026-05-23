@@ -181,10 +181,94 @@ fn draw_confirm(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_widget(help, chunks[2]);
 }
 
-fn draw_downloading(_f: &mut Frame<'_>, _app: &App, _area: Rect) {
+fn draw_downloading(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+    
+    let title = Paragraph::new("正在下载...")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::BOTTOM));
+    f.render_widget(title, chunks[0]);
+    
+    let mut text = vec![];
+    
+    if let Some(ref progress) = app.download_progress {
+        let percent = if progress.total > 0 {
+            (progress.completed as f64 / progress.total as f64) * 100.0
+        } else {
+            0.0
+        };
+        
+        text.push(Line::from(format!("进度: {}/{} ({:.1}%)", 
+            progress.completed, progress.total, percent)));
+        
+        if let Some(ref file) = progress.current_file {
+            text.push(Line::from(format!("当前: {}", file)));
+        }
+        
+        let filled = (percent / 100.0 * 50.0) as usize;
+        let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(50 - filled));
+        text.push(Line::from(bar));
+    } else {
+        text.push(Line::from("准备下载..."));
+    }
+    
+    let progress_widget = Paragraph::new(text)
+        .block(Block::default().borders(Borders::ALL).title("下载进度"));
+    f.render_widget(progress_widget, chunks[1]);
+    
+    let help = Paragraph::new("请稍候...")
+        .style(Style::default().fg(Color::Gray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[2]);
 }
 
-fn draw_completed(_f: &mut Frame<'_>, _app: &App, _area: Rect) {
+fn draw_completed(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+    
+    let title = Paragraph::new("下载完成！")
+        .style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::BOTTOM));
+    f.render_widget(title, chunks[0]);
+    
+    let mut text = vec![];
+    text.push(Line::from("下载结果:"));
+    text.push(Line::from(""));
+    
+    for (filename, success) in &app.download_results {
+        let icon = if *success { "✓" } else { "✗" };
+        let color = if *success { Color::Green } else { Color::Red };
+        text.push(Line::from(vec![
+            Span::styled(format!("{} ", icon), Style::default().fg(color)),
+            Span::styled(filename, Style::default().fg(Color::White)),
+        ]));
+    }
+    
+    let results_widget = Paragraph::new(text)
+        .block(Block::default().borders(Borders::ALL).title("结果"));
+    f.render_widget(results_widget, chunks[1]);
+    
+    let help = Paragraph::new("Enter: 返回主菜单 | q: 退出")
+        .style(Style::default().fg(Color::Gray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[2]);
 }
 
 fn draw_error_popup(f: &mut Frame<'_>, error: &str, area: Rect) {
