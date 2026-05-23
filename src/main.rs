@@ -1,18 +1,30 @@
+use std::collections::HashMap;
 use anyhow::Result;
 use clap::Parser;
+use ratatui::{
+    backend::CrosstermBackend,
+    Terminal,
+};
+use crossterm::{
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
+};
+use std::io;
 
-pub mod app;
-pub mod event;
-pub mod ui;
+use wallpaper_magpie::config::AppConfig;
+use wallpaper_magpie::app::App;
+use wallpaper_magpie::event::EventHandler;
+use wallpaper_magpie::ui;
+use wallpaper_magpie::cli::{Cli, Commands, DownloadArgs};
+use wallpaper_magpie::models::{SearchParams, SortOrder};
+use wallpaper_magpie::providers;
+use wallpaper_magpie::download::DownloadManager;
+use tokio::sync::mpsc;
 
-pub mod cli;
-pub mod config;
-pub mod download;
-pub mod error;
-pub mod models;
-pub mod providers;
-
-use cli::{Cli, Commands};
+mod cli;
+mod config;
+mod error;
+mod models;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -21,24 +33,122 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Download(args) => {
             if args.wizard || args.source.is_none() {
-                println!("Starting TUI wizard...");
+                run_tui().await?;
             } else {
-                println!("CLI download: {:?}", args);
+                run_cli_download(args).await?;
             }
-            Ok(())
         }
         Commands::Config(args) => {
             if args.reset {
-                let cfg = config::AppConfig::default();
-                cfg.save()?;
+                let config = AppConfig::default();
+                config.save()?;
                 println!("Configuration reset to defaults");
             } else if args.edit {
-                println!("Opening configuration editor...");
+                run_tui_config().await?;
             } else {
-                let cfg = config::AppConfig::load()?;
-                println!("{}", toml::to_string_pretty(&cfg)?);
+                let config = AppConfig::load()?;
+                println!("{}", toml::to_string_pretty(&config)?);
             }
-            Ok(())
         }
     }
+
+    Ok(())
+}
+
+async fn run_tui() -> Result<()> {
+    let config = AppConfig::load()?;
+
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    stdout.execute(EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut app = App::new();
+    let event_handler = EventHandler::new(250);
+
+    loop {
+        terminal.draw(|f| ui::draw(f, &app))?;
+
+        match event_handler.next_event()? {
+            wallpaper_magpie::event::AppEvent::Key(key) => {
+                wallpaper_magpie::event::handle_key_event(&mut app, key);
+            }
+            wallpaper_magpie::event::AppEvent::Tick => {}
+        }
+
+        if app.current_step == wallpaper_magpie::app::AppStep::Downloading && app.download_progress.is_none() {
+            if let Err(e) = app.execute_download(&config).await {
+                app.set_error(e.to_string());
+                app.current_step = wallpaper_magpie::app::AppStep::ConfigureFilters;
+            }
+        }
+
+        if app.should_quit {
+            break;
+        }
+    }
+
+    disable_raw_mode()?;
+    terminal.backend_mut().execute(LeaveAlternateScreen)?;
+
+    Ok(())
+}
+
+async fn run_cli_download(args: DownloadArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+
+    let source_name = args.source.unwrap();
+    let source_config = config.get_source_config(&source_name)
+        .ok_or_else(|| anyhow::anyhow!("Source not configured"))?;
+
+    let provider = providers::create_provider(&source_name, source_config)
+        .ok_or_else(|| anyhow::anyhow!("Failed to create provider - check API key"))?;
+
+    let params = SearchParams {
+        query: args.query.unwrap_or_default(),
+        limit: args.limit,
+        resolution: args.resolution,
+        color: args.color,
+        orientation: args.orientation,
+        sort: args.sort.and_then(|s| match s.as_str() {
+            "latest" => Some(SortOrder::Latest),
+            "popular" => Some(SortOrder::Popular),
+            "relevant" => Some(SortOrder::Relevant),
+            "random" => Some(SortOrder::Random),
+            _ => None,
+        }),
+        provider_specific: HashMap::new(),
+    };
+
+    println!("Searching {} for '{}'...", source_name, params.query);
+    let wallpapers = provider.search(&params).await?;
+
+    println!("Found {} wallpapers", wallpapers.len());
+
+    let download_path = config.expand_download_path().join(&source_name);
+    let manager = DownloadManager::new(config.concurrent_downloads);
+
+    let (progress_tx, mut progress_rx) = mpsc::channel(100);
+
+    let download_handle = tokio::spawn(async move {
+        manager.download_wallpapers(provider, wallpapers, download_path, progress_tx).await
+    });
+
+    while let Some(progress) = progress_rx.recv().await {
+        println!("Progress: {}/{}", progress.completed, progress.total);
+    }
+
+    let results = download_handle.await??;
+
+    let success_count = results.iter().filter(|(_, r)| r.is_ok()).count();
+    println!("Downloaded {}/{} wallpapers", success_count, results.len());
+
+    Ok(())
+}
+
+async fn run_tui_config() -> Result<()> {
+    println!("TUI config editor not yet implemented");
+    Ok(())
 }

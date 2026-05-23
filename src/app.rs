@@ -129,4 +129,47 @@ impl App {
         self.editing_filter = None;
         self.edit_buffer.clear();
     }
+
+    pub async fn execute_download(&mut self, config: &crate::config::AppConfig) -> crate::error::Result<()> {
+        use crate::providers;
+        use crate::download::DownloadManager;
+        use tokio::sync::mpsc;
+
+        let source_name = self.selected_source.as_ref().unwrap();
+        let source_config = config.get_source_config(source_name)
+            .ok_or_else(|| crate::error::AppError::ConfigError(
+                format!("Source {} not configured", source_name)
+            ))?;
+
+        let provider = providers::create_provider(source_name, source_config)
+            .ok_or_else(|| crate::error::AppError::ApiKeyRequired {
+                provider: source_name.clone(),
+            })?;
+
+        let wallpapers = provider.search(&self.search_params).await?;
+
+        let download_path = config.expand_download_path().join(source_name);
+        let manager = DownloadManager::new(config.concurrent_downloads);
+
+        let (progress_tx, mut progress_rx) = mpsc::channel(100);
+
+        let download_handle = tokio::spawn(async move {
+            manager.download_wallpapers(provider, wallpapers, download_path, progress_tx).await
+        });
+
+        while let Some(progress) = progress_rx.recv().await {
+            self.download_progress = Some(progress);
+        }
+
+        let results = download_handle.await
+            .map_err(|e| crate::error::AppError::DownloadError(format!("Download task failed: {}", e)))??;
+
+        self.download_results = results.into_iter()
+            .map(|(wallpaper, result)| (wallpaper.filename, result.is_ok()))
+            .collect();
+
+        self.current_step = crate::app::AppStep::Completed;
+
+        Ok(())
+    }
 }
