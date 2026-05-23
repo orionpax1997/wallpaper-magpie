@@ -12,6 +12,7 @@ impl From<tokio::sync::AcquireError> for AppError {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DownloadProgress {
     pub total: usize,
     pub completed: usize,

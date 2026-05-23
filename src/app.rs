@@ -22,6 +22,8 @@ pub struct App {
     pub message: Option<String>,
     pub error_message: Option<String>,
     pub should_quit: bool,
+    pub download_progress: Option<crate::download::DownloadProgress>,
+    pub download_results: Vec<(String, bool)>,
 }
 
 impl Default for App {
@@ -42,6 +44,8 @@ impl Default for App {
             message: None,
             error_message: None,
             should_quit: false,
+            download_progress: None,
+            download_results: Vec::new(),
         }
     }
 }
