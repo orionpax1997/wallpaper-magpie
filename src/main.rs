@@ -4,7 +4,7 @@ use clap::Parser;
 mod cli;
 mod config;
 pub mod error;
-mod models;
+pub mod models;
 
 use cli::Cli;
 
