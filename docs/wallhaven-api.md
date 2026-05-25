@@ -69,6 +69,21 @@ GET https://wallhaven.cc/api/v1/w/94x38z
 
 Our search listing API behaves in much the same way as our current search. All search URL parameters are accepted in our API:
 
+| Parameter | Allowed values / Examples | Description |
+|---|---|---|
+| q | tagname, -tagname, +tag1 +tag2, +tag1 -tag2, @username, id:123, type:{png/jpg}, like:wallpaper ID | Search query - Your main way of finding what you're looking for |
+| categories | 100/101/111/* (general/anime/people) | Turn categories on(1) or off(0) |
+| purity | 100/110/111/* (sfw/sketchy/nsfw) | Turn purities on(1) or off(0). NSFW requires a valid API key |
+| sorting | date_added*, relevance, random, views, favorites, toplist | Method of sorting results |
+| order | desc*, asc | Sorting order |
+| topRange | 1d, 3d, 1w, 1M*, 3M, 6M, 1y | Sorting MUST be set to 'toplist' |
+| atleast | 1920x1080 | Minimum resolution allowed |
+| resolutions | 1920x1080,1920x1200 | List of exact wallpaper resolutions. Single resolution allowed |
+| ratios | 16x9,16x10 | List of aspect ratios. Single ratio allowed |
+| colors | 000000, 0066cc, 0099cc, 66cccc, 77cc33, 669900, 666600, 999900, cccc33, ffff00, ffcc33, ff9900, ff6600, cc6633, 996633, 663300, 660000, 990000, cc0000, cc3333, ea4c88, 993399, 663399, 333399, 999999, cccccc, ffffff, 424153 | Search by color |
+| page | 1 - | Pagination |
+| seed | [a-zA-Z0-9]{6} | Optional seed for random results |
+
 *\* Default*
 
 Search listings are accessed via URL:  
@@ -155,13 +170,10 @@ GET https://wallhaven.cc/api/v1/search
     "current_page": 1,
     "last_page": 36,
     "per_page": 24,
-    "total": 848
-    "query": "test" or null
-## --- for exact tag searches ---
-    "query": {
-      "id": 1,
-      "tag": "anime"
-    }
+    "total": 848,
+    "query": "test" or null,
+    // for exact tag searches:
+    // "query": { "id": 1, "tag": "anime" }
     "seed": "abc123" or null
   }
 }
