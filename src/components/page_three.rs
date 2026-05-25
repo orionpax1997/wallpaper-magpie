@@ -6,6 +6,8 @@ use ratatui::{
     Frame,
 };
 
+use std::fmt;
+
 #[derive(Debug, Clone)]
 pub enum LogEntry {
     Start { filename: String },
@@ -13,13 +15,13 @@ pub enum LogEntry {
     Failure { filename: String, error: String },
 }
 
-impl LogEntry {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for LogEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LogEntry::Start { filename } => format!("\u{25B6} 开始下载: {}", filename),
-            LogEntry::Success { filename } => format!("\u{2713} 完成: {}", filename),
+            LogEntry::Start { filename } => write!(f, "\u{25B6} 开始下载: {}", filename),
+            LogEntry::Success { filename } => write!(f, "\u{2713} 完成: {}", filename),
             LogEntry::Failure { filename, error } => {
-                format!("\u{2717} 失败: {} ({})", filename, error)
+                write!(f, "\u{2717} 失败: {} ({})", filename, error)
             }
         }
     }

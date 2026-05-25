@@ -123,6 +123,7 @@ impl Provider for UnsplashProvider {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct UnsplashSearchResponse {
     total: u32,
     total_pages: u32,
@@ -139,6 +140,7 @@ struct UnsplashPhoto {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct UnsplashUrls {
     raw: String,
     full: String,

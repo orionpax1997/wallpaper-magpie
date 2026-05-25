@@ -88,7 +88,7 @@ fn draw_configure_filters(f: &mut Frame<'_>, app: &App, area: Rect) {
     .block(Block::default().borders(Borders::BOTTOM));
     f.render_widget(title, chunks[0]);
 
-    let filters = vec![
+    let filters = [
         ("query", "关键词", app.search_params.query.clone()),
         (
             "resolution",

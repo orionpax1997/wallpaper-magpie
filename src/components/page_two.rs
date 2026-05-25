@@ -64,16 +64,13 @@ impl PageTwo {
             .cloned()
             .unwrap_or_default();
 
-        match &field.filter_type {
-            FilterFieldType::Enum { options } => {
-                let current_value = self.filter_values.get(self.selected_index).cloned();
-                self.dropdown = Some(Dropdown::new(
-                    field.display_name.clone(),
-                    options.clone(),
-                    current_value,
-                ));
-            }
-            _ => {}
+        if let FilterFieldType::Enum { options } = &field.filter_type {
+            let current_value = self.filter_values.get(self.selected_index).cloned();
+            self.dropdown = Some(Dropdown::new(
+                field.display_name.clone(),
+                options.clone(),
+                current_value,
+            ));
         }
     }
 

@@ -123,6 +123,7 @@ impl Provider for PexelsProvider {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PexelsSearchResponse {
     total_results: u32,
     page: u32,
@@ -132,6 +133,7 @@ struct PexelsSearchResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PexelsPhoto {
     id: u64,
     width: u32,
@@ -142,6 +144,7 @@ struct PexelsPhoto {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PexelsSrc {
     original: String,
     large2x: String,

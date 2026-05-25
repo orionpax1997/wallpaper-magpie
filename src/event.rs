@@ -30,24 +30,21 @@ impl EventHandler {
 }
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Esc => {
-            if app.modal.is_some() {
-                app.modal = None;
-                return;
-            }
-            if app.editing_filter.is_some() {
-                app.cancel_filter_edit();
-                return;
-            }
-            match app.current_step {
-                AppStep::ConfigureFilters => app.previous_step(),
-                AppStep::ConfirmAndDownload => app.previous_step(),
-                _ => app.quit(),
-            }
+    if key.code == KeyCode::Esc {
+        if app.modal.is_some() {
+            app.modal = None;
             return;
         }
-        _ => {}
+        if app.editing_filter.is_some() {
+            app.cancel_filter_edit();
+            return;
+        }
+        match app.current_step {
+            AppStep::ConfigureFilters => app.previous_step(),
+            AppStep::ConfirmAndDownload => app.previous_step(),
+            _ => app.quit(),
+        }
+        return;
     }
 
     match app.current_step {
@@ -86,7 +83,7 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
             };
         }
         KeyCode::Char('e') | KeyCode::Char('E') => {
-            let filter_names = vec![
+            let filter_names = [
                 "query",
                 "resolution",
                 "color",
@@ -99,7 +96,7 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Enter | KeyCode::Char('\r') | KeyCode::Char('n') | KeyCode::Char('N') => {
-            let filter_names = vec![
+            let filter_names = [
                 "query",
                 "resolution",
                 "color",

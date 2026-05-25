@@ -27,7 +27,7 @@ impl WallhavenProvider {
         }
 
         let per_page = 24u32;
-        let pages_needed = ((params.limit + per_page - 1) / per_page).max(1);
+        let pages_needed = params.limit.div_ceil(per_page).max(1);
         url.push_str(&format!("&page=1&pages={}", pages_needed));
 
         if let Some(ref resolution) = params.resolution {
@@ -156,12 +156,14 @@ impl Provider for WallhavenProvider {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WallhavenSearchResponse {
     data: Vec<WallhavenWallpaper>,
     meta: WallhavenMeta,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WallhavenWallpaper {
     id: String,
     url: String,
@@ -171,6 +173,7 @@ struct WallhavenWallpaper {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WallhavenMeta {
     current_page: u32,
     last_page: u32,

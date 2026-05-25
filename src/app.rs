@@ -309,14 +309,11 @@ impl App {
             match key.code {
                 KeyCode::Enter => {
                     let value = modal.get_value();
-                    match &modal.modal_type {
-                        ModalType::ApiKeyEdit { source, .. } => {
-                            self.config.set_api_key(source, value);
-                            if let Err(e) = ConfigManager::save(&self.config) {
-                                let _ = e;
-                            }
+                    if let ModalType::ApiKeyEdit { source, .. } = &modal.modal_type {
+                        self.config.set_api_key(source, value);
+                        if let Err(e) = ConfigManager::save(&self.config) {
+                            let _ = e;
                         }
-                        _ => {}
                     }
                     self.modal = None;
                 }
