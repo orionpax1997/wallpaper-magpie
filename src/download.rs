@@ -28,7 +28,7 @@ impl DownloadManager {
     pub fn new(concurrent_limit: usize) -> Self {
         Self { concurrent_limit }
     }
-    
+
     pub async fn download_wallpapers(
         &self,
         provider: Arc<dyn Provider>,
@@ -39,16 +39,16 @@ impl DownloadManager {
         let semaphore = Arc::new(Semaphore::new(self.concurrent_limit));
         let total = wallpapers.len();
         let mut handles = Vec::new();
-        
+
         for (idx, wallpaper) in wallpapers.into_iter().enumerate() {
             let permit = semaphore.clone().acquire_owned().await?;
             let provider = provider.clone();
             let tx = progress_tx.clone();
             let base = base_path.clone();
-            
+
             let handle = task::spawn(async move {
                 let result = Self::download_single(provider, &wallpaper, &base).await;
-                
+
                 let progress = DownloadProgress {
                     total,
                     completed: idx + 1,
@@ -56,14 +56,14 @@ impl DownloadManager {
                     current_file: Some(wallpaper.filename.clone()),
                 };
                 let _ = tx.send(progress).await;
-                
+
                 drop(permit);
                 (wallpaper, result)
             });
-            
+
             handles.push(handle);
         }
-        
+
         let mut results = Vec::new();
         for handle in handles {
             match handle.await {
@@ -73,23 +73,23 @@ impl DownloadManager {
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     async fn download_single(
         provider: Arc<dyn Provider>,
         wallpaper: &Wallpaper,
         base_path: &Path,
     ) -> Result<PathBuf> {
         let file_path = base_path.join(&wallpaper.filename);
-        
+
         if let Some(parent) = file_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
-        
+
         provider.download(wallpaper, &file_path).await?;
-        
+
         Ok(file_path)
     }
 }

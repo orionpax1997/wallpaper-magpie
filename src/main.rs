@@ -1,25 +1,22 @@
-use std::collections::HashMap;
 use anyhow::Result;
 use clap::Parser;
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::collections::HashMap;
 use std::io;
 
-use wallpaper_magpie::config::AppConfig;
+use tokio::sync::mpsc;
 use wallpaper_magpie::app::App;
-use wallpaper_magpie::event::EventHandler;
-use wallpaper_magpie::ui;
 use wallpaper_magpie::cli::{Cli, Commands, DownloadArgs};
+use wallpaper_magpie::config::AppConfig;
+use wallpaper_magpie::download::DownloadManager;
+use wallpaper_magpie::event::EventHandler;
 use wallpaper_magpie::models::{SearchParams, SortOrder};
 use wallpaper_magpie::providers;
-use wallpaper_magpie::download::DownloadManager;
-use tokio::sync::mpsc;
+use wallpaper_magpie::ui;
 
 mod cli;
 mod config;
@@ -78,7 +75,9 @@ async fn run_tui() -> Result<()> {
             wallpaper_magpie::event::AppEvent::Tick => {}
         }
 
-        if app.current_step == wallpaper_magpie::app::AppStep::Downloading && app.download_progress.is_none() {
+        if app.current_step == wallpaper_magpie::app::AppStep::Downloading
+            && app.download_progress.is_none()
+        {
             if let Err(e) = app.execute_download(&config).await {
                 app.set_error(e.to_string());
                 app.current_step = wallpaper_magpie::app::AppStep::ConfigureFilters;
@@ -100,7 +99,8 @@ async fn run_cli_download(args: DownloadArgs) -> Result<()> {
     let config = AppConfig::load()?;
 
     let source_name = args.source.unwrap();
-    let source_config = config.get_source_config(&source_name)
+    let source_config = config
+        .get_source_config(&source_name)
         .ok_or_else(|| anyhow::anyhow!("Source not configured"))?;
 
     let provider = providers::create_provider(&source_name, source_config)
@@ -133,7 +133,9 @@ async fn run_cli_download(args: DownloadArgs) -> Result<()> {
     let (progress_tx, mut progress_rx) = mpsc::channel(100);
 
     let download_handle = tokio::spawn(async move {
-        manager.download_wallpapers(provider, wallpapers, download_path, progress_tx).await
+        manager
+            .download_wallpapers(provider, wallpapers, download_path, progress_tx)
+            .await
     });
 
     while let Some(progress) = progress_rx.recv().await {

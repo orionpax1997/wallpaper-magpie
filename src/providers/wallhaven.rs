@@ -1,5 +1,5 @@
-use std::path::Path;
 use serde::Deserialize;
+use std::path::Path;
 
 use crate::error::{AppError, Result};
 use crate::models::{ApiKeyRequirement, FilterType, Provider, SearchParams, SortOrder, Wallpaper};
@@ -16,30 +16,30 @@ impl WallhavenProvider {
             client: reqwest::Client::new(),
         }
     }
-    
+
     fn build_search_url(&self, params: &SearchParams) -> String {
         let mut url = "https://wallhaven.cc/api/v1/search".to_string();
-        
+
         if !params.query.is_empty() {
             url.push_str(&format!("?q={}", urlencoding::encode(&params.query)));
         } else {
             url.push('?');
         }
-        
+
         let per_page = 24u32;
         let pages_needed = ((params.limit + per_page - 1) / per_page).max(1);
         url.push_str(&format!("&page=1&pages={}", pages_needed));
-        
+
         if let Some(ref resolution) = params.resolution {
             if resolution.contains('x') {
                 url.push_str(&format!("&atleast={}", resolution));
             }
         }
-        
+
         if let Some(ref color) = params.color {
             url.push_str(&format!("&colors={}", color.trim_start_matches('#')));
         }
-        
+
         if let Some(ref sort) = params.sort {
             let sorting = match sort {
                 SortOrder::Latest => "date_added",
@@ -51,32 +51,34 @@ impl WallhavenProvider {
             };
             url.push_str(&format!("&sorting={}", sorting));
         }
-        
+
         if let Some(ref top_range) = params.provider_specific.get("topRange") {
             url.push_str(&format!("&topRange={}", top_range));
         }
-        
+
         if let Some(ref categories) = params.provider_specific.get("categories") {
             url.push_str(&format!("&categories={}", categories));
         } else {
             url.push_str("&categories=111");
         }
-        
+
         if let Some(ref purity) = params.provider_specific.get("purity") {
             url.push_str(&format!("&purity={}", purity));
         } else {
             url.push_str("&purity=100");
         }
-        
+
         if !self.api_key.is_empty() {
             url.push_str(&format!("&apikey={}", self.api_key));
         }
-        
+
         url
     }
-    
+
     fn parse_wallpapers(&self, response: WallhavenSearchResponse, limit: u32) -> Vec<Wallpaper> {
-        response.data.into_iter()
+        response
+            .data
+            .into_iter()
             .take(limit as usize)
             .map(|wallpaper| Wallpaper {
                 id: wallpaper.id.clone(),
@@ -96,7 +98,7 @@ impl Provider for WallhavenProvider {
     fn name(&self) -> &str {
         "wallhaven"
     }
-    
+
     fn requires_api_key(&self) -> ApiKeyRequirement {
         if self.api_key.is_empty() {
             ApiKeyRequirement::Optional
@@ -104,7 +106,7 @@ impl Provider for WallhavenProvider {
             ApiKeyRequirement::Required
         }
     }
-    
+
     fn available_filters(&self) -> Vec<FilterType> {
         vec![
             FilterType::Query,
@@ -117,15 +119,12 @@ impl Provider for WallhavenProvider {
             FilterType::TopRange,
         ]
     }
-    
+
     async fn search(&self, params: &SearchParams) -> Result<Vec<Wallpaper>> {
         let url = self.build_search_url(params);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await?;
-        
+
+        let response = self.client.get(&url).send().await?;
+
         let status = response.status();
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
@@ -134,26 +133,24 @@ impl Provider for WallhavenProvider {
                 message: text,
             });
         }
-        
+
         let data: WallhavenSearchResponse = response.json().await?;
         Ok(self.parse_wallpapers(data, params.limit))
     }
-    
+
     async fn download(&self, wallpaper: &Wallpaper, path: &Path) -> Result<()> {
-        let response = self.client
-            .get(&wallpaper.url)
-            .send()
-            .await?;
-        
+        let response = self.client.get(&wallpaper.url).send().await?;
+
         if !response.status().is_success() {
-            return Err(AppError::DownloadError(
-                format!("Failed to download: HTTP {}", response.status())
-            ));
+            return Err(AppError::DownloadError(format!(
+                "Failed to download: HTTP {}",
+                response.status()
+            )));
         }
-        
+
         let bytes = response.bytes().await?;
         std::fs::write(path, bytes)?;
-        
+
         Ok(())
     }
 }

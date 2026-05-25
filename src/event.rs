@@ -18,7 +18,7 @@ impl EventHandler {
             tick_rate: Duration::from_millis(tick_rate_ms),
         }
     }
-    
+
     pub fn next_event(&self) -> std::io::Result<AppEvent> {
         if event::poll(self.tick_rate)? {
             if let Event::Key(key) = event::read()? {
@@ -51,7 +51,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         }
         _ => {}
     }
-    
+
     match app.current_step {
         AppStep::SelectSource => handle_select_source(app, key),
         AppStep::ConfigureFilters => handle_configure_filters(app, key),
@@ -124,7 +124,7 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
         }
         return;
     }
-    
+
     match key.code {
         KeyCode::Tab | KeyCode::Down => {
             app.current_filter_index = (app.current_filter_index + 1) % 7;
@@ -137,13 +137,28 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
             };
         }
         KeyCode::Char('e') | KeyCode::Char('E') => {
-            let filter_names = vec!["query", "resolution", "color", "orientation", "sort", "limit"];
+            let filter_names = vec![
+                "query",
+                "resolution",
+                "color",
+                "orientation",
+                "sort",
+                "limit",
+            ];
             if let Some(name) = filter_names.get(app.current_filter_index) {
                 app.start_editing_filter(name);
             }
         }
         KeyCode::Enter | KeyCode::Char('\r') | KeyCode::Char('n') | KeyCode::Char('N') => {
-            let filter_names = vec!["query", "resolution", "color", "orientation", "sort", "limit", "下一步 →"];
+            let filter_names = vec![
+                "query",
+                "resolution",
+                "color",
+                "orientation",
+                "sort",
+                "limit",
+                "下一步 →",
+            ];
             if app.current_filter_index < 6 {
                 let name = filter_names[app.current_filter_index];
                 app.start_editing_filter(name);

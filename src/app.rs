@@ -54,13 +54,13 @@ impl App {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn select_source(&mut self, source: String) {
         self.selected_source = Some(source);
         self.current_step = AppStep::ConfigureFilters;
         self.current_filter_index = 0;
     }
-    
+
     pub fn next_step(&mut self) {
         self.current_step = match self.current_step {
             AppStep::SelectSource => AppStep::ConfigureFilters,
@@ -70,7 +70,7 @@ impl App {
             AppStep::Completed => AppStep::SelectSource,
         };
     }
-    
+
     pub fn previous_step(&mut self) {
         self.current_step = match self.current_step {
             AppStep::ConfigureFilters => AppStep::SelectSource,
@@ -78,28 +78,33 @@ impl App {
             _ => self.current_step.clone(),
         };
     }
-    
+
     pub fn set_error(&mut self, msg: String) {
         self.error_message = Some(msg);
     }
-    
+
     pub fn clear_error(&mut self) {
         self.error_message = None;
     }
-    
+
     pub fn quit(&mut self) {
         self.should_quit = true;
     }
 
     pub fn start_editing_filter(&mut self, filter_name: &str) {
         self.editing_filter = Some(filter_name.to_string());
-        self.edit_buffer = self.filter_values.get(filter_name).cloned().unwrap_or_default();
+        self.edit_buffer = self
+            .filter_values
+            .get(filter_name)
+            .cloned()
+            .unwrap_or_default();
     }
 
     pub fn commit_filter_edit(&mut self) {
         if let Some(ref filter) = self.editing_filter {
-            self.filter_values.insert(filter.clone(), self.edit_buffer.clone());
-            
+            self.filter_values
+                .insert(filter.clone(), self.edit_buffer.clone());
+
             match filter.as_str() {
                 "query" => self.search_params.query = self.edit_buffer.clone(),
                 "resolution" => self.search_params.resolution = Some(self.edit_buffer.clone()),
@@ -130,21 +135,24 @@ impl App {
         self.edit_buffer.clear();
     }
 
-    pub async fn execute_download(&mut self, config: &crate::config::AppConfig) -> crate::error::Result<()> {
-        use crate::providers;
+    pub async fn execute_download(
+        &mut self,
+        config: &crate::config::AppConfig,
+    ) -> crate::error::Result<()> {
         use crate::download::DownloadManager;
+        use crate::providers;
         use tokio::sync::mpsc;
 
         let source_name = self.selected_source.as_ref().unwrap();
-        let source_config = config.get_source_config(source_name)
-            .ok_or_else(|| crate::error::AppError::ConfigError(
-                format!("Source {} not configured", source_name)
-            ))?;
+        let source_config = config.get_source_config(source_name).ok_or_else(|| {
+            crate::error::AppError::ConfigError(format!("Source {} not configured", source_name))
+        })?;
 
-        let provider = providers::create_provider(source_name, source_config)
-            .ok_or_else(|| crate::error::AppError::ApiKeyRequired {
+        let provider = providers::create_provider(source_name, source_config).ok_or_else(|| {
+            crate::error::AppError::ApiKeyRequired {
                 provider: source_name.clone(),
-            })?;
+            }
+        })?;
 
         let wallpapers = provider.search(&self.search_params).await?;
 
@@ -154,17 +162,21 @@ impl App {
         let (progress_tx, mut progress_rx) = mpsc::channel(100);
 
         let download_handle = tokio::spawn(async move {
-            manager.download_wallpapers(provider, wallpapers, download_path, progress_tx).await
+            manager
+                .download_wallpapers(provider, wallpapers, download_path, progress_tx)
+                .await
         });
 
         while let Some(progress) = progress_rx.recv().await {
             self.download_progress = Some(progress);
         }
 
-        let results = download_handle.await
-            .map_err(|e| crate::error::AppError::DownloadError(format!("Download task failed: {}", e)))??;
+        let results = download_handle.await.map_err(|e| {
+            crate::error::AppError::DownloadError(format!("Download task failed: {}", e))
+        })??;
 
-        self.download_results = results.into_iter()
+        self.download_results = results
+            .into_iter()
             .map(|(wallpaper, result)| (wallpaper.filename, result.is_ok()))
             .collect();
 

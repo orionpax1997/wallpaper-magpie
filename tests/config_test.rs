@@ -14,12 +14,12 @@ fn test_default_config() {
 fn test_save_and_load_config() {
     let mut config = AppConfig::default();
     config.download_path = "./test-wallpapers".to_string();
-    
+
     config.save().unwrap();
-    
+
     let loaded = AppConfig::load().unwrap();
     assert_eq!(loaded.download_path, "./test-wallpapers");
-    
+
     let default = AppConfig::default();
     default.save().unwrap();
 }

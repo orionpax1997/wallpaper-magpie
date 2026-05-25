@@ -1,5 +1,5 @@
-use std::path::Path;
 use serde::Deserialize;
+use std::path::Path;
 
 use crate::error::{AppError, Result};
 use crate::models::{ApiKeyRequirement, FilterType, Provider, SearchParams, Wallpaper};
@@ -16,13 +16,13 @@ impl PexelsProvider {
             client: reqwest::Client::new(),
         }
     }
-    
+
     fn build_search_url(&self, params: &SearchParams) -> String {
         let mut url = "https://api.pexels.com/v1/search".to_string();
-        
+
         url.push_str(&format!("?query={}", urlencoding::encode(&params.query)));
         url.push_str(&format!("&per_page={}", params.limit.min(80)));
-        
+
         if let Some(ref orientation) = params.orientation {
             let pexels_orientation = match orientation.as_str() {
                 "landscape" => "landscape",
@@ -32,20 +32,22 @@ impl PexelsProvider {
             };
             url.push_str(&format!("&orientation={}", pexels_orientation));
         }
-        
+
         if let Some(ref color) = params.color {
             url.push_str(&format!("&color={}", color));
         }
-        
+
         if let Some(ref size) = params.provider_specific.get("size") {
             url.push_str(&format!("&size={}", size));
         }
-        
+
         url
     }
-    
+
     fn parse_photos(&self, response: PexelsSearchResponse) -> Vec<Wallpaper> {
-        response.photos.into_iter()
+        response
+            .photos
+            .into_iter()
             .map(|photo| Wallpaper {
                 id: photo.id.to_string(),
                 source: "pexels".to_string(),
@@ -64,11 +66,11 @@ impl Provider for PexelsProvider {
     fn name(&self) -> &str {
         "pexels"
     }
-    
+
     fn requires_api_key(&self) -> ApiKeyRequirement {
         ApiKeyRequirement::Required
     }
-    
+
     fn available_filters(&self) -> Vec<FilterType> {
         vec![
             FilterType::Query,
@@ -79,16 +81,17 @@ impl Provider for PexelsProvider {
             FilterType::Limit,
         ]
     }
-    
+
     async fn search(&self, params: &SearchParams) -> Result<Vec<Wallpaper>> {
         let url = self.build_search_url(params);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", &self.api_key)
             .send()
             .await?;
-        
+
         let status = response.status();
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
@@ -97,26 +100,24 @@ impl Provider for PexelsProvider {
                 message: text,
             });
         }
-        
+
         let data: PexelsSearchResponse = response.json().await?;
         Ok(self.parse_photos(data))
     }
-    
+
     async fn download(&self, wallpaper: &Wallpaper, path: &Path) -> Result<()> {
-        let response = self.client
-            .get(&wallpaper.url)
-            .send()
-            .await?;
-        
+        let response = self.client.get(&wallpaper.url).send().await?;
+
         if !response.status().is_success() {
-            return Err(AppError::DownloadError(
-                format!("Failed to download: HTTP {}", response.status())
-            ));
+            return Err(AppError::DownloadError(format!(
+                "Failed to download: HTTP {}",
+                response.status()
+            )));
         }
-        
+
         let bytes = response.bytes().await?;
         std::fs::write(path, bytes)?;
-        
+
         Ok(())
     }
 }

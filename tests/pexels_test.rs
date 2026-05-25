@@ -1,4 +1,4 @@
-use wallpaper_magpie::models::{SearchParams, Provider, ApiKeyRequirement};
+use wallpaper_magpie::models::{ApiKeyRequirement, Provider, SearchParams};
 use wallpaper_magpie::providers::pexels::PexelsProvider;
 
 #[tokio::test]
@@ -10,7 +10,10 @@ async fn test_pexels_provider_name() {
 #[tokio::test]
 async fn test_pexels_requires_api_key() {
     let provider = PexelsProvider::new("test-key".to_string());
-    assert!(matches!(provider.requires_api_key(), ApiKeyRequirement::Required));
+    assert!(matches!(
+        provider.requires_api_key(),
+        ApiKeyRequirement::Required
+    ));
 }
 
 #[tokio::test]

@@ -1,4 +1,4 @@
-use wallpaper_magpie::models::{SearchParams, Provider, ApiKeyRequirement};
+use wallpaper_magpie::models::{ApiKeyRequirement, Provider, SearchParams};
 use wallpaper_magpie::providers::wallhaven::WallhavenProvider;
 
 #[tokio::test]
@@ -10,10 +10,16 @@ async fn test_wallhaven_provider_name() {
 #[tokio::test]
 async fn test_wallhaven_optional_api_key() {
     let provider = WallhavenProvider::new("".to_string());
-    assert!(matches!(provider.requires_api_key(), ApiKeyRequirement::Optional));
-    
+    assert!(matches!(
+        provider.requires_api_key(),
+        ApiKeyRequirement::Optional
+    ));
+
     let provider_with_key = WallhavenProvider::new("test-key".to_string());
-    assert!(matches!(provider_with_key.requires_api_key(), ApiKeyRequirement::Required));
+    assert!(matches!(
+        provider_with_key.requires_api_key(),
+        ApiKeyRequirement::Required
+    ));
 }
 
 #[tokio::test]

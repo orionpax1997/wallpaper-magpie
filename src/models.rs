@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 
@@ -124,8 +124,11 @@ impl AppConfig {
 
     pub fn has_api_key(&self, source: &str) -> bool {
         match source {
-            "unsplash" => self.unsplash_api_key.as_ref().map_or(false, |k| !k.is_empty()),
-            "pexels" => self.pexels_api_key.as_ref().map_or(false, |k| !k.is_empty()),
+            "unsplash" => self
+                .unsplash_api_key
+                .as_ref()
+                .is_some_and(|k| !k.is_empty()),
+            "pexels" => self.pexels_api_key.as_ref().is_some_and(|k| !k.is_empty()),
             "wallhaven" => true, // Wallhaven always available
             _ => false,
         }

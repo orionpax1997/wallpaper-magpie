@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use crate::models::Provider;
 use crate::config::SourceConfig;
+use crate::models::Provider;
 
-pub mod unsplash;
 pub mod pexels;
+pub mod unsplash;
 pub mod wallhaven;
 
-use unsplash::UnsplashProvider;
 use pexels::PexelsProvider;
+use unsplash::UnsplashProvider;
 use wallhaven::WallhavenProvider;
 
 pub fn create_provider(name: &str, config: &SourceConfig) -> Option<Arc<dyn Provider>> {
@@ -27,9 +27,7 @@ pub fn create_provider(name: &str, config: &SourceConfig) -> Option<Arc<dyn Prov
                 Some(Arc::new(PexelsProvider::new(config.api_key.clone())))
             }
         }
-        "wallhaven" => {
-            Some(Arc::new(WallhavenProvider::new(config.api_key.clone())))
-        }
+        "wallhaven" => Some(Arc::new(WallhavenProvider::new(config.api_key.clone()))),
         _ => None,
     }
 }

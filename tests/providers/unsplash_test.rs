@@ -1,4 +1,4 @@
-use wallpaper_magpie::models::Provider;
+use wallpaper_magpie::models::{SearchParams, Provider};
 use wallpaper_magpie::providers::unsplash::UnsplashProvider;
 
 #[tokio::test]
@@ -11,10 +11,7 @@ async fn test_unsplash_provider_name() {
 async fn test_unsplash_requires_api_key() {
     let provider = UnsplashProvider::new("test-key".to_string());
     use wallpaper_magpie::models::ApiKeyRequirement;
-    assert!(matches!(
-        provider.requires_api_key(),
-        ApiKeyRequirement::Required
-    ));
+    assert!(matches!(provider.requires_api_key(), ApiKeyRequirement::Required));
 }
 
 #[tokio::test]
