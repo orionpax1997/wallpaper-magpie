@@ -5,6 +5,7 @@ pub mod config_manager;
 pub mod download;
 pub mod error;
 pub mod event;
+pub mod filter_config;
 pub mod models;
 pub mod providers;
 pub mod ui;

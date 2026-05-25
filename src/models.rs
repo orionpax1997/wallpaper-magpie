@@ -100,6 +100,29 @@ pub struct AppConfig {
     pub wallhaven_api_key: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub enum FilterFieldType {
+    Text,
+    Number,
+    Enum { options: Vec<String> },
+}
+
+#[derive(Debug, Clone)]
+pub struct FilterField {
+    pub name: String,
+    pub display_name: String,
+    pub filter_type: FilterFieldType,
+    pub default_value: Option<String>,
+    pub placeholder: String,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SourceFilters {
+    pub source_name: String,
+    pub fields: Vec<FilterField>,
+}
+
 impl AppConfig {
     pub fn config_path() -> std::path::PathBuf {
         std::path::PathBuf::from("config.toml")
