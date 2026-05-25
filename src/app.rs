@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::components::modal::{Modal, ModalType};
 use crate::components::page_one::PageOne;
+use crate::components::page_three::PageThree;
 use crate::components::page_two::PageTwo;
 use crate::config::AppConfig as FullConfig;
 use crate::config_manager::ConfigManager;
@@ -35,6 +36,8 @@ pub struct App {
     pub download_progress: Option<crate::download::DownloadProgress>,
     pub download_results: Vec<(String, bool)>,
     pub config: AppConfig,
+    pub page_two: Option<PageTwo>,
+    pub page_three: Option<PageThree>,
 }
 
 impl Default for App {
@@ -61,6 +64,8 @@ impl Default for App {
             download_progress: None,
             download_results: Vec::new(),
             config: AppConfig::default(),
+            page_two: None,
+            page_three: None,
         }
     }
 }
@@ -109,6 +114,75 @@ impl App {
             }
             KeyCode::Esc => {
                 self.should_quit = true;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn handle_page_two_input(&mut self, key: KeyEvent) {
+        let page_two = match &mut self.page_two {
+            Some(p) => p,
+            None => return,
+        };
+
+        if page_two.dropdown.is_some() {
+            match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    page_two.previous();
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    page_two.next();
+                }
+                KeyCode::Enter => {
+                    page_two.confirm_edit();
+                }
+                KeyCode::Esc => {
+                    page_two.cancel_edit();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        if page_two.editing_index.is_some() {
+            match key.code {
+                KeyCode::Enter => {
+                    page_two.confirm_edit();
+                }
+                KeyCode::Esc => {
+                    page_two.cancel_edit();
+                }
+                KeyCode::Char(c) => {
+                    page_two.editing_buffer.push(c);
+                }
+                KeyCode::Backspace => {
+                    page_two.editing_buffer.pop();
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                page_two.previous();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                page_two.next();
+            }
+            KeyCode::Enter => {
+                self.current_step = AppStep::ConfirmAndDownload;
+                self.current_page = 3;
+                if self.page_three.is_none() {
+                    self.page_three = Some(PageThree::new(self.search_params.limit as usize));
+                }
+            }
+            KeyCode::Char('e') => {
+                page_two.start_editing();
+            }
+            KeyCode::Esc => {
+                self.current_step = AppStep::SelectSource;
+                self.current_page = 1;
             }
             _ => {}
         }
