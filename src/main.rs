@@ -14,7 +14,8 @@ use wallpaper_magpie::cli::{Cli, Commands, DownloadArgs};
 use wallpaper_magpie::config::AppConfig;
 use wallpaper_magpie::download::DownloadManager;
 use wallpaper_magpie::event::EventHandler;
-use wallpaper_magpie::models::{SearchParams, SortOrder};
+use wallpaper_magpie::filter_config::get_filters_for_source;
+use wallpaper_magpie::models::{FilterFieldType, SearchParams, SortOrder};
 use wallpaper_magpie::providers;
 
 mod cli;
@@ -45,6 +46,9 @@ async fn main() -> Result<()> {
                 let config = AppConfig::load()?;
                 println!("{}", toml::to_string_pretty(&config)?);
             }
+        }
+        Commands::Help(args) => {
+            print_source_help(&args.source);
         }
     }
 
@@ -152,4 +156,29 @@ async fn run_cli_download(args: DownloadArgs) -> Result<()> {
 async fn run_tui_config() -> Result<()> {
     println!("TUI config editor not yet implemented");
     Ok(())
+}
+
+fn print_source_help(source: &str) {
+    if let Some(filters) = get_filters_for_source(source) {
+        println!("{} 支持的过滤器:\n", filters.source_name);
+        for field in &filters.fields {
+            let type_str = match &field.filter_type {
+                FilterFieldType::Text => "字符串".to_string(),
+                FilterFieldType::Number => "数字".to_string(),
+                FilterFieldType::Enum { options } => format!("枚举 ({})", options.join(", ")),
+            };
+            let default_str = field
+                .default_value
+                .as_ref()
+                .map(|v| format!(" [默认: {}]", v))
+                .unwrap_or_default();
+            println!(
+                "{:<15} {} - {}{}",
+                field.name, field.display_name, type_str, default_str
+            );
+        }
+    } else {
+        eprintln!("未知源: {}", source);
+        println!("\n可用源: wallhaven, unsplash, pexels");
+    }
 }

@@ -4,6 +4,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(name = "wallpaper-magpie")]
 #[command(about = "A CLI + TUI tool for collecting wallpapers")]
 #[command(version = "0.1.0")]
+#[command(disable_help_subcommand = true)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -15,6 +16,14 @@ pub enum Commands {
     Download(DownloadArgs),
     /// Manage configuration
     Config(ConfigArgs),
+    /// Show help for a source's filters
+    Help(HelpArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct HelpArgs {
+    /// Source name (wallhaven, unsplash, pexels)
+    pub source: String,
 }
 
 #[derive(Args, Debug, Clone)]
