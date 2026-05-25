@@ -38,7 +38,8 @@ impl Dropdown {
     }
 
     pub fn get_selected(&self) -> String {
-        self.options.get(self.selected_index)
+        self.options
+            .get(self.selected_index)
             .cloned()
             .unwrap_or_default()
     }
@@ -56,17 +57,22 @@ pub fn render_dropdown(f: &mut Frame, dropdown: &Dropdown) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
-    let items: Vec<ListItem> = dropdown.options.iter().enumerate().map(|(i, option)| {
-        let style = if i == dropdown.selected_index {
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-        };
-        ListItem::new(option.clone()).style(style)
-    }).collect();
+    let items: Vec<ListItem> = dropdown
+        .options
+        .iter()
+        .enumerate()
+        .map(|(i, option)| {
+            let style = if i == dropdown.selected_index {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(option.clone()).style(style)
+        })
+        .collect();
 
     let list = List::new(items).block(block);
     f.render_widget(list, popup_area);

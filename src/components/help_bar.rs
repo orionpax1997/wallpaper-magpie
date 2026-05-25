@@ -35,17 +35,11 @@ impl HelpBar {
     }
 
     pub fn for_page_three() -> Self {
-        Self::new(vec![
-            "[Enter] 完成".to_string(),
-            "[Esc] 取消".to_string(),
-        ])
+        Self::new(vec!["[Enter] 完成".to_string(), "[Esc] 取消".to_string()])
     }
 
     pub fn for_modal() -> Self {
-        Self::new(vec![
-            "[Enter] 确认".to_string(),
-            "[Esc] 取消".to_string(),
-        ])
+        Self::new(vec!["[Enter] 确认".to_string(), "[Esc] 取消".to_string()])
     }
 
     pub fn for_dropdown() -> Self {
@@ -58,9 +52,11 @@ impl HelpBar {
 }
 
 pub fn render_help_bar(f: &mut Frame, help_bar: &HelpBar, area: Rect) {
-    let spans: Vec<Span> = help_bar.items.iter().map(|item| {
-        Span::styled(item.clone(), Style::default().fg(Color::Gray))
-    }).collect();
+    let spans: Vec<Span> = help_bar
+        .items
+        .iter()
+        .map(|item| Span::styled(item.clone(), Style::default().fg(Color::Gray)))
+        .collect();
 
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line);

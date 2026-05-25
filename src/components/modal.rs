@@ -8,8 +8,14 @@ use ratatui::{
 
 #[derive(Debug, Clone)]
 pub enum ModalType {
-    ApiKeyEdit { source: String, current_value: String },
-    Confirm { title: String, message: String },
+    ApiKeyEdit {
+        source: String,
+        current_value: String,
+    },
+    Confirm {
+        title: String,
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -74,12 +80,11 @@ pub fn render_modal(f: &mut Frame, modal: &Modal) {
     f.render_widget(Clear, popup_area);
 
     let (title, content) = match &modal.modal_type {
-        ModalType::ApiKeyEdit { source, .. } => {
-            (format!("编辑 {} API Key", source), format!("当前值: {}", modal.input_buffer))
-        }
-        ModalType::Confirm { title, message } => {
-            (title.clone(), message.clone())
-        }
+        ModalType::ApiKeyEdit { source, .. } => (
+            format!("编辑 {} API Key", source),
+            format!("当前值: {}", modal.input_buffer),
+        ),
+        ModalType::Confirm { title, message } => (title.clone(), message.clone()),
     };
 
     let block = Block::default()
@@ -90,20 +95,15 @@ pub fn render_modal(f: &mut Frame, modal: &Modal) {
     let text = vec![
         Line::from(content),
         Line::from(""),
-        Line::from(vec![
-            Span::raw("[Enter] 确认  "),
-            Span::raw("[Esc] 取消"),
-        ]),
+        Line::from(vec![Span::raw("[Enter] 确认  "), Span::raw("[Esc] 取消")]),
     ];
 
-    let paragraph = Paragraph::new(text)
-        .block(block)
-        .wrap(Wrap { trim: true });
+    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, popup_area);
 }
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

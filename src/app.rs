@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::components::modal::{Modal, ModalType};
 use crate::components::page_one::PageOne;
+use crate::components::page_two::PageTwo;
 use crate::config::AppConfig as FullConfig;
 use crate::config_manager::ConfigManager;
 use crate::models::{AppConfig, SearchParams, SortOrder};
@@ -191,6 +192,36 @@ impl App {
     pub fn cancel_filter_edit(&mut self) {
         self.editing_filter = None;
         self.edit_buffer.clear();
+    }
+
+    pub fn handle_page_three_input(&mut self, key: crossterm::event::KeyEvent) {
+        use crossterm::event::KeyCode;
+
+        let page = match &mut self.page_three {
+            Some(p) => p,
+            None => return,
+        };
+
+        match key.code {
+            KeyCode::Enter | KeyCode::Char('\r') => {
+                if !page.confirm_cancel {
+                    self.should_quit = true;
+                }
+            }
+            KeyCode::Esc => {
+                if page.confirm_cancel {
+                    page.cancelled = true;
+                    self.current_step = AppStep::ConfigureFilters;
+                } else {
+                    page.handle_esc();
+                }
+            }
+            _ => {
+                if page.confirm_cancel {
+                    page.dismiss_confirm();
+                }
+            }
+        }
     }
 
     pub async fn execute_download(&mut self) -> crate::error::Result<()> {
