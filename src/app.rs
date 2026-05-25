@@ -1,4 +1,10 @@
-use crate::models::{SearchParams, SortOrder};
+use crossterm::event::{KeyCode, KeyEvent};
+
+use crate::components::modal::{Modal, ModalType};
+use crate::components::page_one::PageOne;
+use crate::config::AppConfig as FullConfig;
+use crate::config_manager::ConfigManager;
+use crate::models::{AppConfig, SearchParams, SortOrder};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppStep {
@@ -9,9 +15,12 @@ pub enum AppStep {
     Completed,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct App {
     pub current_step: AppStep,
+    pub page_one: PageOne,
+    pub current_page: u8,
+    pub modal: Option<Modal>,
     pub selected_source: Option<String>,
     pub search_params: SearchParams,
     pub available_sources: Vec<String>,
@@ -24,12 +33,16 @@ pub struct App {
     pub should_quit: bool,
     pub download_progress: Option<crate::download::DownloadProgress>,
     pub download_results: Vec<(String, bool)>,
+    pub config: AppConfig,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
             current_step: AppStep::SelectSource,
+            page_one: PageOne::new(&AppConfig::default()),
+            current_page: 1,
+            modal: None,
             selected_source: None,
             search_params: SearchParams::default(),
             available_sources: vec![
@@ -46,13 +59,58 @@ impl Default for App {
             should_quit: false,
             download_progress: None,
             download_results: Vec::new(),
+            config: AppConfig::default(),
         }
     }
 }
 
 impl App {
     pub fn new() -> Self {
-        Self::default()
+        let config = ConfigManager::load().unwrap_or_default();
+        let page_one = PageOne::new(&config);
+        Self {
+            config,
+            page_one,
+            ..Self::default()
+        }
+    }
+
+    pub fn handle_page_one_input(&mut self, key: KeyEvent) {
+        if self.modal.is_some() {
+            return;
+        }
+
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.page_one.previous();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.page_one.next();
+            }
+            KeyCode::Enter => {
+                if let Some(source) = self.page_one.get_selected_source() {
+                    if self.page_one.is_selected_available(&self.config) {
+                        self.selected_source = Some(source.name.clone());
+                        self.current_step = AppStep::ConfigureFilters;
+                        self.current_page = 2;
+                    }
+                }
+            }
+            KeyCode::Char('e') => {
+                if let Some(source) = self.page_one.get_selected_source() {
+                    let current_value = self.config.get_api_key(&source.name).unwrap_or_default();
+                    let modal_type = ModalType::ApiKeyEdit {
+                        source: source.name.clone(),
+                        current_value,
+                    };
+                    self.modal = Some(Modal::new(modal_type));
+                }
+            }
+            KeyCode::Esc => {
+                self.should_quit = true;
+            }
+            _ => {}
+        }
     }
 
     pub fn select_source(&mut self, source: String) {
@@ -135,16 +193,15 @@ impl App {
         self.edit_buffer.clear();
     }
 
-    pub async fn execute_download(
-        &mut self,
-        config: &crate::config::AppConfig,
-    ) -> crate::error::Result<()> {
+    pub async fn execute_download(&mut self) -> crate::error::Result<()> {
         use crate::download::DownloadManager;
         use crate::providers;
         use tokio::sync::mpsc;
 
+        let full_config = FullConfig::load()?;
+
         let source_name = self.selected_source.as_ref().unwrap();
-        let source_config = config.get_source_config(source_name).ok_or_else(|| {
+        let source_config = full_config.get_source_config(source_name).ok_or_else(|| {
             crate::error::AppError::ConfigError(format!("Source {} not configured", source_name))
         })?;
 
@@ -156,8 +213,8 @@ impl App {
 
         let wallpapers = provider.search(&self.search_params).await?;
 
-        let download_path = config.expand_download_path().join(source_name);
-        let manager = DownloadManager::new(config.concurrent_downloads);
+        let download_path = full_config.expand_download_path().join(source_name);
+        let manager = DownloadManager::new(full_config.concurrent_downloads);
 
         let (progress_tx, mut progress_rx) = mpsc::channel(100);
 
@@ -180,7 +237,7 @@ impl App {
             .map(|(wallpaper, result)| (wallpaper.filename, result.is_ok()))
             .collect();
 
-        self.current_step = crate::app::AppStep::Completed;
+        self.current_step = AppStep::Completed;
 
         Ok(())
     }

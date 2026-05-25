@@ -78,7 +78,7 @@ async fn run_tui() -> Result<()> {
         if app.current_step == wallpaper_magpie::app::AppStep::Downloading
             && app.download_progress.is_none()
         {
-            if let Err(e) = app.execute_download(&config).await {
+            if let Err(e) = app.execute_download().await {
                 app.set_error(e.to_string());
                 app.current_step = wallpaper_magpie::app::AppStep::ConfigureFilters;
             }

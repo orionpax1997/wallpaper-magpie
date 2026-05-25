@@ -38,6 +38,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Esc => {
+            if app.modal.is_some() {
+                app.modal = None;
+                return;
+            }
             if app.editing_filter.is_some() {
                 app.cancel_filter_edit();
                 return;
@@ -53,58 +57,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     }
 
     match app.current_step {
-        AppStep::SelectSource => handle_select_source(app, key),
+        AppStep::SelectSource => app.handle_page_one_input(key),
         AppStep::ConfigureFilters => handle_configure_filters(app, key),
         AppStep::ConfirmAndDownload => handle_confirm(app, key),
-        _ => {}
-    }
-}
-
-fn handle_select_source(app: &mut App, key: KeyEvent) {
-    let enter_pressed = matches!(key.code, KeyCode::Enter | KeyCode::Char('\r'));
-    match key.code {
-        KeyCode::Up | KeyCode::Char('k') => {
-            if let Some(ref selected) = app.selected_source {
-                if let Some(idx) = app.available_sources.iter().position(|s| s == selected) {
-                    if idx > 0 {
-                        app.selected_source = Some(app.available_sources[idx - 1].clone());
-                    }
-                }
-            }
-        }
-        KeyCode::Down | KeyCode::Char('j') => {
-            if let Some(ref selected) = app.selected_source {
-                if let Some(idx) = app.available_sources.iter().position(|s| s == selected) {
-                    if idx < app.available_sources.len() - 1 {
-                        app.selected_source = Some(app.available_sources[idx + 1].clone());
-                    }
-                }
-            } else if !app.available_sources.is_empty() {
-                app.selected_source = Some(app.available_sources[0].clone());
-            }
-        }
-        _ if enter_pressed => {
-            if let Some(ref source) = app.selected_source {
-                app.select_source(source.clone());
-            } else if !app.available_sources.is_empty() {
-                app.select_source(app.available_sources[0].clone());
-            }
-        }
-        KeyCode::Char('1') => {
-            if !app.available_sources.is_empty() {
-                app.selected_source = Some(app.available_sources[0].clone());
-            }
-        }
-        KeyCode::Char('2') => {
-            if app.available_sources.len() > 1 {
-                app.selected_source = Some(app.available_sources[1].clone());
-            }
-        }
-        KeyCode::Char('3') => {
-            if app.available_sources.len() > 2 {
-                app.selected_source = Some(app.available_sources[2].clone());
-            }
-        }
         _ => {}
     }
 }
