@@ -61,8 +61,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
 }
 
 fn handle_select_source(app: &mut App, key: KeyEvent) {
+    let enter_pressed = matches!(key.code, KeyCode::Enter | KeyCode::Char('\r'));
     match key.code {
-        KeyCode::Up => {
+        KeyCode::Up | KeyCode::Char('k') => {
             if let Some(ref selected) = app.selected_source {
                 if let Some(idx) = app.available_sources.iter().position(|s| s == selected) {
                     if idx > 0 {
@@ -71,7 +72,7 @@ fn handle_select_source(app: &mut App, key: KeyEvent) {
                 }
             }
         }
-        KeyCode::Down => {
+        KeyCode::Down | KeyCode::Char('j') => {
             if let Some(ref selected) = app.selected_source {
                 if let Some(idx) = app.available_sources.iter().position(|s| s == selected) {
                     if idx < app.available_sources.len() - 1 {
@@ -82,11 +83,26 @@ fn handle_select_source(app: &mut App, key: KeyEvent) {
                 app.selected_source = Some(app.available_sources[0].clone());
             }
         }
-        KeyCode::Enter => {
+        _ if enter_pressed => {
             if let Some(ref source) = app.selected_source {
                 app.select_source(source.clone());
             } else if !app.available_sources.is_empty() {
                 app.select_source(app.available_sources[0].clone());
+            }
+        }
+        KeyCode::Char('1') => {
+            if !app.available_sources.is_empty() {
+                app.selected_source = Some(app.available_sources[0].clone());
+            }
+        }
+        KeyCode::Char('2') => {
+            if app.available_sources.len() > 1 {
+                app.selected_source = Some(app.available_sources[1].clone());
+            }
+        }
+        KeyCode::Char('3') => {
+            if app.available_sources.len() > 2 {
+                app.selected_source = Some(app.available_sources[2].clone());
             }
         }
         _ => {}
@@ -96,7 +112,8 @@ fn handle_select_source(app: &mut App, key: KeyEvent) {
 fn handle_configure_filters(app: &mut App, key: KeyEvent) {
     if let Some(ref _filter) = app.editing_filter {
         match key.code {
-            KeyCode::Enter => app.commit_filter_edit(),
+            KeyCode::Enter | KeyCode::Char('\r') => app.commit_filter_edit(),
+            KeyCode::Esc => app.cancel_filter_edit(),
             KeyCode::Backspace => {
                 app.edit_buffer.pop();
             }
@@ -110,19 +127,28 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
     
     match key.code {
         KeyCode::Tab | KeyCode::Down => {
-            app.current_filter_index = (app.current_filter_index + 1) % 6;
+            app.current_filter_index = (app.current_filter_index + 1) % 7;
         }
         KeyCode::Up => {
             app.current_filter_index = if app.current_filter_index == 0 {
-                5
+                6
             } else {
                 app.current_filter_index - 1
             };
         }
-        KeyCode::Enter => {
+        KeyCode::Char('e') | KeyCode::Char('E') => {
             let filter_names = vec!["query", "resolution", "color", "orientation", "sort", "limit"];
             if let Some(name) = filter_names.get(app.current_filter_index) {
                 app.start_editing_filter(name);
+            }
+        }
+        KeyCode::Enter | KeyCode::Char('\r') | KeyCode::Char('n') | KeyCode::Char('N') => {
+            let filter_names = vec!["query", "resolution", "color", "orientation", "sort", "limit", "下一步 →"];
+            if app.current_filter_index < 6 {
+                let name = filter_names[app.current_filter_index];
+                app.start_editing_filter(name);
+            } else {
+                app.next_step();
             }
         }
         _ => {}
@@ -131,7 +157,7 @@ fn handle_configure_filters(app: &mut App, key: KeyEvent) {
 
 fn handle_confirm(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Enter => {
+        KeyCode::Enter | KeyCode::Char('\r') | KeyCode::Char('d') | KeyCode::Char('D') => {
             app.next_step();
         }
         _ => {}

@@ -85,7 +85,7 @@ fn draw_configure_filters(f: &mut Frame<'_>, app: &App, area: Rect) {
         ("limit", "数量", app.search_params.limit.to_string()),
     ];
     
-    let filter_text: Vec<Line> = filters.iter()
+    let mut filter_text: Vec<Line> = filters.iter()
         .enumerate()
         .map(|(i, (key, label, value))| {
             let editing = app.editing_filter.as_ref() == Some(&key.to_string());
@@ -107,11 +107,18 @@ fn draw_configure_filters(f: &mut Frame<'_>, app: &App, area: Rect) {
         })
         .collect();
     
+    let is_next_step = app.current_filter_index == 6;
+    let next_prefix = if is_next_step { "▸ " } else { "  " };
+    filter_text.push(Line::from(vec![
+        Span::styled(format!("{}7. 下一步 →", next_prefix), 
+            if is_next_step { Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD) } else { Style::default().fg(Color::Green) }),
+    ]));
+    
     let filters_widget = Paragraph::new(filter_text)
         .block(Block::default().borders(Borders::ALL).title("筛选条件"));
     f.render_widget(filters_widget, chunks[1]);
     
-    let help = Paragraph::new("Tab/↑↓: 切换字段 | Enter: 编辑/确认 | Esc: 取消 | q: 退出")
+    let help = Paragraph::new("↑↓/Tab: 切换 | Enter/e: 编辑/下一步 | Esc: 取消 | q: 退出")
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
     f.render_widget(help, chunks[2]);
