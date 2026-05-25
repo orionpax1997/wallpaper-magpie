@@ -16,7 +16,6 @@ use wallpaper_magpie::download::DownloadManager;
 use wallpaper_magpie::event::EventHandler;
 use wallpaper_magpie::models::{SearchParams, SortOrder};
 use wallpaper_magpie::providers;
-use wallpaper_magpie::ui;
 
 mod cli;
 mod config;
@@ -66,11 +65,11 @@ async fn run_tui() -> Result<()> {
     let event_handler = EventHandler::new(250);
 
     loop {
-        terminal.draw(|f| ui::draw(f, &app))?;
+        terminal.draw(|f| app.draw(f))?;
 
         match event_handler.next_event()? {
             wallpaper_magpie::event::AppEvent::Key(key) => {
-                wallpaper_magpie::event::handle_key_event(&mut app, key);
+                app.handle_input(key).await;
             }
             wallpaper_magpie::event::AppEvent::Tick => {}
         }

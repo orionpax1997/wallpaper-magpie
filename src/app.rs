@@ -1,9 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::{
+    layout::{Constraint, Direction, Layout},
+    Frame,
+};
 
-use crate::components::modal::{Modal, ModalType};
-use crate::components::page_one::PageOne;
-use crate::components::page_three::PageThree;
-use crate::components::page_two::PageTwo;
+use crate::components::help_bar::HelpBar;
+use crate::components::modal::{render_modal, Modal, ModalType};
+use crate::components::page_one::render_page_one;
+use crate::components::page_three::render_page_three;
+use crate::components::page_two::render_page_two;
+use crate::components::{help_bar, page_one::PageOne, page_three::PageThree, page_two::PageTwo};
 use crate::config::AppConfig as FullConfig;
 use crate::config_manager::ConfigManager;
 use crate::models::{AppConfig, SearchParams, SortOrder};
@@ -295,6 +301,82 @@ impl App {
                     page.dismiss_confirm();
                 }
             }
+        }
+    }
+
+    pub async fn handle_input(&mut self, key: KeyEvent) {
+        if let Some(ref mut modal) = self.modal {
+            match key.code {
+                KeyCode::Enter => {
+                    let value = modal.get_value();
+                    match &modal.modal_type {
+                        ModalType::ApiKeyEdit { source, .. } => {
+                            self.config.set_api_key(source, value);
+                            if let Err(e) = ConfigManager::save(&self.config) {
+                                let _ = e;
+                            }
+                        }
+                        _ => {}
+                    }
+                    self.modal = None;
+                }
+                KeyCode::Esc => {
+                    self.modal = None;
+                }
+                KeyCode::Char(c) => modal.handle_input(c),
+                KeyCode::Backspace => modal.handle_backspace(),
+                KeyCode::Delete => modal.handle_delete(),
+                KeyCode::Left => modal.move_cursor_left(),
+                KeyCode::Right => modal.move_cursor_right(),
+                _ => {}
+            }
+            return;
+        }
+
+        match self.current_page {
+            1 => self.handle_page_one_input(key),
+            2 => self.handle_page_two_input(key),
+            3 => self.handle_page_three_input(key),
+            _ => {}
+        }
+    }
+
+    pub fn draw(&mut self, f: &mut Frame) {
+        let area = f.size();
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .split(area);
+
+        match self.current_page {
+            1 => {
+                render_page_one(f, &self.page_one, &self.config, chunks[0]);
+                help_bar::render_help_bar(f, &HelpBar::for_page_one(), chunks[1]);
+            }
+            2 => {
+                if let Some(ref page_two) = self.page_two {
+                    render_page_two(f, page_two, chunks[0]);
+                    if page_two.dropdown.is_some() {
+                        help_bar::render_help_bar(f, &HelpBar::for_dropdown(), chunks[1]);
+                    } else if page_two.editing_index.is_some() {
+                        help_bar::render_help_bar(f, &HelpBar::for_modal(), chunks[1]);
+                    } else {
+                        help_bar::render_help_bar(f, &HelpBar::for_page_two(), chunks[1]);
+                    }
+                }
+            }
+            3 => {
+                if let Some(ref page_three) = self.page_three {
+                    render_page_three(f, page_three, chunks[0]);
+                    help_bar::render_help_bar(f, &HelpBar::for_page_three(), chunks[1]);
+                }
+            }
+            _ => {}
+        }
+
+        if let Some(ref modal) = self.modal {
+            render_modal(f, modal);
         }
     }
 

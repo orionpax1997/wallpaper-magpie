@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use std::time::Duration;
 
 use crate::app::{App, AppStep};
@@ -31,12 +31,6 @@ impl EventHandler {
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Char('q') | KeyCode::Char('Q') => {
-            if key.modifiers == KeyModifiers::CONTROL {
-                app.quit();
-                return;
-            }
-        }
         KeyCode::Esc => {
             if app.modal.is_some() {
                 app.modal = None;
