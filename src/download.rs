@@ -12,11 +12,21 @@ impl From<tokio::sync::AcquireError> for AppError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum DownloadStatus {
+    Pending,
+    Downloading,
+    Completed,
+    Failed,
+}
+
 #[derive(Debug, Clone)]
 pub struct DownloadProgress {
     pub total: usize,
     pub completed: usize,
     pub failed: usize,
+    pub pending: usize,
+    pub status: DownloadStatus,
     pub current_file: Option<String>,
 }
 
@@ -47,12 +57,28 @@ impl DownloadManager {
             let base = base_path.clone();
 
             let handle = task::spawn(async move {
+                let start_progress = DownloadProgress {
+                    total,
+                    completed: idx,
+                    failed: 0,
+                    pending: total - idx,
+                    status: DownloadStatus::Pending,
+                    current_file: Some(wallpaper.filename.clone()),
+                };
+                let _ = tx.send(start_progress).await;
+
                 let result = Self::download_single(provider, &wallpaper, &base).await;
 
                 let progress = DownloadProgress {
                     total,
                     completed: idx + 1,
                     failed: if result.is_err() { 1 } else { 0 },
+                    pending: total - idx - 1,
+                    status: if result.is_ok() {
+                        DownloadStatus::Completed
+                    } else {
+                        DownloadStatus::Failed
+                    },
                     current_file: Some(wallpaper.filename.clone()),
                 };
                 let _ = tx.send(progress).await;

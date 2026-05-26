@@ -1,14 +1,16 @@
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
+    event::{KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::collections::HashMap;
 use std::io;
-
-use tokio::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 use wallpaper_magpie::app::App;
 use wallpaper_magpie::cli::{Cli, Commands, DownloadArgs};
 use wallpaper_magpie::config::AppConfig;
@@ -17,6 +19,7 @@ use wallpaper_magpie::event::EventHandler;
 use wallpaper_magpie::filter_config::get_filters_for_source;
 use wallpaper_magpie::models::{FilterFieldType, SearchParams, SortOrder};
 use wallpaper_magpie::providers;
+use tokio::sync::mpsc;
 
 mod cli;
 mod config;
@@ -25,6 +28,11 @@ mod models;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    std::panic::set_hook(Box::new(|_| {
+        disable_raw_mode().ok();
+        let _ = io::stdout().execute(LeaveAlternateScreen);
+    }));
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -55,33 +63,64 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+fn cleanup_terminal() {
+    disable_raw_mode().ok();
+    let _ = io::stdout().execute(LeaveAlternateScreen);
+}
+
 async fn run_tui() -> Result<()> {
-    let config = AppConfig::load()?;
+    let _ = AppConfig::load()?;
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
 
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal = Terminal::new(backend)?;
+
+    let force_quit = Arc::new(AtomicBool::new(false));
+    let fq = force_quit.clone();
+
+    thread::spawn(move || {
+        signal_hook::flag::register(signal_hook::consts::SIGINT, fq.clone()).ok();
+        signal_hook::flag::register(signal_hook::consts::SIGTERM, fq.clone()).ok();
+    });
 
     let mut app = App::new();
     let event_handler = EventHandler::new(250);
+    let terminal = Arc::new(tokio::sync::Mutex::new(terminal));
 
     loop {
-        terminal.draw(|f| app.draw(f))?;
+        {
+            let mut term = terminal.lock().await;
+            term.draw(|f| app.draw(f))?;
+        }
+
+        if force_quit.load(Ordering::SeqCst) {
+            drop(terminal);
+            cleanup_terminal();
+            return Ok(());
+        }
 
         match event_handler.next_event()? {
+            wallpaper_magpie::event::AppEvent::Tick => {}
             wallpaper_magpie::event::AppEvent::Key(key) => {
+                if key.kind == KeyEventKind::Press
+                    && key.code == KeyCode::Char('c')
+                    && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+                {
+                    drop(terminal);
+                    cleanup_terminal();
+                    return Ok(());
+                }
                 app.handle_input(key).await;
             }
-            wallpaper_magpie::event::AppEvent::Tick => {}
         }
 
         if app.current_step == wallpaper_magpie::app::AppStep::Downloading
             && app.download_progress.is_none()
         {
-            if let Err(e) = app.execute_download().await {
+            if let Err(e) = app.execute_download(terminal.clone()).await {
                 app.set_error(e.to_string());
                 app.current_step = wallpaper_magpie::app::AppStep::ConfigureFilters;
             }
@@ -92,9 +131,8 @@ async fn run_tui() -> Result<()> {
         }
     }
 
-    disable_raw_mode()?;
-    terminal.backend_mut().execute(LeaveAlternateScreen)?;
-
+    drop(terminal);
+    cleanup_terminal();
     Ok(())
 }
 

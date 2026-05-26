@@ -18,8 +18,7 @@ pub fn draw(f: &mut Frame<'_>, app: &App) {
         AppStep::SelectSource => draw_select_source(f, app, size),
         AppStep::ConfigureFilters => draw_configure_filters(f, app, size),
         AppStep::ConfirmAndDownload => draw_confirm(f, app, size),
-        AppStep::Downloading => draw_downloading(f, app, size),
-        AppStep::Completed => draw_completed(f, app, size),
+        AppStep::Downloading | AppStep::Completed => {}
     }
 
     if let Some(ref error) = app.error_message {
@@ -239,62 +238,6 @@ fn draw_confirm(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_widget(confirm_widget, chunks[1]);
 
     let help = Paragraph::new("Enter: 确认下载 | Esc: 返回 | q: 退出")
-        .style(Style::default().fg(Color::Gray))
-        .alignment(Alignment::Center);
-    f.render_widget(help, chunks[2]);
-}
-
-fn draw_downloading(f: &mut Frame<'_>, app: &App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(2)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(0),
-            Constraint::Length(3),
-        ])
-        .split(area);
-
-    let title = Paragraph::new("正在下载...")
-        .style(
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )
-        .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::BOTTOM));
-    f.render_widget(title, chunks[0]);
-
-    let mut text = vec![];
-
-    if let Some(ref progress) = app.download_progress {
-        let percent = if progress.total > 0 {
-            (progress.completed as f64 / progress.total as f64) * 100.0
-        } else {
-            0.0
-        };
-
-        text.push(Line::from(format!(
-            "进度: {}/{} ({:.1}%)",
-            progress.completed, progress.total, percent
-        )));
-
-        if let Some(ref file) = progress.current_file {
-            text.push(Line::from(format!("当前: {}", file)));
-        }
-
-        let filled = (percent / 100.0 * 50.0) as usize;
-        let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(50 - filled));
-        text.push(Line::from(bar));
-    } else {
-        text.push(Line::from("准备下载..."));
-    }
-
-    let progress_widget =
-        Paragraph::new(text).block(Block::default().borders(Borders::ALL).title("下载进度"));
-    f.render_widget(progress_widget, chunks[1]);
-
-    let help = Paragraph::new("请稍候...")
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
     f.render_widget(help, chunks[2]);

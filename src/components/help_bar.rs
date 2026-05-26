@@ -38,6 +38,10 @@ impl HelpBar {
         Self::new(vec!["[Enter] 完成".to_string(), "[Esc] 取消".to_string()])
     }
 
+    pub fn for_page_three_downloading() -> Self {
+        Self::new(vec!["下载中...".to_string()])
+    }
+
     pub fn for_modal() -> Self {
         Self::new(vec!["[Enter] 确认".to_string(), "[Esc] 取消".to_string()])
     }

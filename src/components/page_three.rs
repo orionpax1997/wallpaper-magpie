@@ -31,7 +31,10 @@ impl fmt::Display for LogEntry {
 pub struct PageThree {
     pub total: usize,
     pub completed: usize,
+    pub failed: usize,
     pub in_progress: usize,
+    pub pending: usize,
+    pub is_preparing: bool,
     pub logs: Vec<LogEntry>,
     pub cancelled: bool,
     pub confirm_cancel: bool,
@@ -42,7 +45,10 @@ impl PageThree {
         Self {
             total,
             completed: 0,
+            failed: 0,
             in_progress: 0,
+            pending: 0,
+            is_preparing: false,
             logs: Vec::new(),
             cancelled: false,
             confirm_cancel: false,
@@ -58,7 +64,7 @@ impl PageThree {
             }
             LogEntry::Failure { .. } => {
                 self.in_progress = self.in_progress.saturating_sub(1);
-                self.completed += 1;
+                self.failed += 1;
             }
         }
         self.logs.push(entry);
@@ -82,25 +88,65 @@ pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
-            Constraint::Min(5),
+            Constraint::Percentage(100),
             Constraint::Length(1),
         ])
         .split(area);
 
-    let stats_text = format!(
-        "总数: {}  已完成: {}  进行中: {}",
-        page.total, page.completed, page.in_progress
-    );
+    let completed = page
+        .logs
+        .iter()
+        .filter(|l| matches!(l, LogEntry::Success { .. }))
+        .count();
+    let failed = page
+        .logs
+        .iter()
+        .filter(|l| matches!(l, LogEntry::Failure { .. }))
+        .count();
+    let in_progress = page
+        .logs
+        .iter()
+        .filter(|l| matches!(l, LogEntry::Start { .. }))
+        .count()
+        .saturating_sub(completed + failed);
+
+    let stats_text = if page.is_preparing {
+        format!("总数: {}  准备中: {} ...", page.total, page.total)
+    } else {
+        format!(
+            "{}总数: {}  已完成: {}  进行中: {}  待处理: {}",
+            if page.in_progress > 0 { "正在下载... " } else { "" },
+            page.total,
+            completed,
+            in_progress,
+            page.pending
+        )
+    };
     let stats = Paragraph::new(stats_text)
         .style(Style::default().fg(Color::White))
         .block(Block::default().title("下载进度").borders(Borders::ALL));
     f.render_widget(stats, chunks[0]);
 
-    let log_items: Vec<ListItem> = page
-        .logs
-        .iter()
-        .map(|log| ListItem::new(log.to_string()))
-        .collect();
+    let log_range_start: usize = page.logs.len().saturating_sub(10);
+    let log_items: Vec<ListItem> = if page.is_preparing {
+        (0..page.total)
+            .map(|i| ListItem::new(format!("\u{25B6} 正在准备下载 {} ...", i + 1)))
+            .collect()
+    } else {
+        let items: Vec<ListItem> = page
+            .logs
+            .iter()
+            .skip(log_range_start)
+            .map(|log| ListItem::new(log.to_string()))
+            .collect();
+        let remaining: usize = 10usize.saturating_sub(items.len());
+        let start_idx = log_range_start + items.len();
+        let mut result = items;
+        for i in 0..remaining {
+            result.push(ListItem::new(format!("\u{25CB} 等待下载 {} ...", start_idx + i + 1)));
+        }
+        result
+    };
 
     let log_list = List::new(log_items).block(Block::default().title("日志").borders(Borders::ALL));
     f.render_widget(log_list, chunks[1]);

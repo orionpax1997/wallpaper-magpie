@@ -17,7 +17,7 @@ impl WallhavenProvider {
         }
     }
 
-    fn build_search_url(&self, params: &SearchParams) -> String {
+    fn build_base_url(&self, params: &SearchParams) -> String {
         let mut url = "https://wallhaven.cc/api/v1/search".to_string();
 
         if !params.query.is_empty() {
@@ -25,10 +25,6 @@ impl WallhavenProvider {
         } else {
             url.push('?');
         }
-
-        let per_page = 24u32;
-        let pages_needed = params.limit.div_ceil(per_page).max(1);
-        url.push_str(&format!("&page=1&pages={}", pages_needed));
 
         if let Some(ref resolution) = params.resolution {
             if resolution.contains('x') {
@@ -121,21 +117,40 @@ impl Provider for WallhavenProvider {
     }
 
     async fn search(&self, params: &SearchParams) -> Result<Vec<Wallpaper>> {
-        let url = self.build_search_url(params);
+        let per_page = params
+            .provider_specific
+            .get("per_page")
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(10);
+        let pages_needed = params.limit.div_ceil(per_page).max(1);
 
-        let response = self.client.get(&url).send().await?;
+        let base_url = self.build_base_url(params);
+        let mut all_wallpapers = Vec::new();
 
-        let status = response.status();
-        if !status.is_success() {
-            let text = response.text().await.unwrap_or_default();
-            return Err(AppError::ApiError {
-                status_code: status.as_u16(),
-                message: text,
-            });
+        for page_num in 1..=pages_needed {
+            let url = format!("{}&page={}", base_url, page_num);
+            let response = self.client.get(&url).send().await?;
+
+            let status = response.status();
+            if !status.is_success() {
+                let text = response.text().await.unwrap_or_default();
+                return Err(AppError::ApiError {
+                    status_code: status.as_u16(),
+                    message: text,
+                });
+            }
+
+            let data: WallhavenSearchResponse = response.json().await?;
+            let wallpapers = self.parse_wallpapers(data, u32::MAX);
+            all_wallpapers.extend(wallpapers);
+
+            if all_wallpapers.len() >= params.limit as usize {
+                break;
+            }
         }
 
-        let data: WallhavenSearchResponse = response.json().await?;
-        Ok(self.parse_wallpapers(data, params.limit))
+        all_wallpapers.truncate(params.limit as usize);
+        Ok(all_wallpapers)
     }
 
     async fn download(&self, wallpaper: &Wallpaper, path: &Path) -> Result<()> {

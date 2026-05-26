@@ -1,8 +1,12 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    Frame,
+    Frame, Terminal,
 };
+use std::io::Stdout;
+use std::sync::Arc;
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::components::help_bar::HelpBar;
 use crate::components::modal::{render_modal, Modal, ModalType};
@@ -32,10 +36,6 @@ pub struct App {
     pub selected_source: Option<String>,
     pub search_params: SearchParams,
     pub available_sources: Vec<String>,
-    pub current_filter_index: usize,
-    pub filter_values: std::collections::HashMap<String, String>,
-    pub editing_filter: Option<String>,
-    pub edit_buffer: String,
     pub message: Option<String>,
     pub error_message: Option<String>,
     pub should_quit: bool,
@@ -60,10 +60,6 @@ impl Default for App {
                 "pexels".to_string(),
                 "wallhaven".to_string(),
             ],
-            current_filter_index: 0,
-            filter_values: std::collections::HashMap::new(),
-            editing_filter: None,
-            edit_buffer: String::new(),
             message: None,
             error_message: None,
             should_quit: false,
@@ -105,6 +101,7 @@ impl App {
                         self.selected_source = Some(source.name.clone());
                         self.current_step = AppStep::ConfigureFilters;
                         self.current_page = 2;
+                        self.page_two = PageTwo::new(&source.name);
                     }
                 }
             }
@@ -176,19 +173,51 @@ impl App {
             KeyCode::Down | KeyCode::Char('j') => {
                 page_two.next();
             }
-            KeyCode::Enter => {
-                self.current_step = AppStep::ConfirmAndDownload;
-                self.current_page = 3;
-                if self.page_three.is_none() {
-                    self.page_three = Some(PageThree::new(self.search_params.limit as usize));
-                }
-            }
             KeyCode::Char('e') => {
                 page_two.start_editing();
             }
             KeyCode::Esc => {
                 self.current_step = AppStep::SelectSource;
                 self.current_page = 1;
+            }
+            KeyCode::Enter => {
+                if let Some(ref page_two) = self.page_two {
+                    let filter_params = page_two.get_filter_params();
+                    self.search_params.provider_specific.clear();
+                    for (key, value) in filter_params {
+                        if key == "sorting" {
+                            self.search_params.sort = match value.as_str() {
+                                "date_added" => Some(SortOrder::Latest),
+                                "relevance" => Some(SortOrder::Popular),
+                                "random" => Some(SortOrder::Random),
+                                "views" => Some(SortOrder::Views),
+                                "favorites" => Some(SortOrder::Favorites),
+                                "toplist" => Some(SortOrder::Favorites),
+                                _ => Some(SortOrder::Latest),
+                            };
+                        } else if key == "query" {
+                            self.search_params.query = value;
+                        } else if key == "atleast" && value.contains('x') {
+                            self.search_params.resolution = Some(value);
+                        } else if key == "colors" && !value.is_empty() {
+                            self.search_params.color = Some(value);
+                        } else if key == "page" {
+                            let pages: u32 = value.parse().unwrap_or(1);
+                            self.search_params.limit = pages * 10;
+                            self.search_params.provider_specific.insert(key, value);
+                        } else {
+                            self.search_params.provider_specific.insert(key, value);
+                        }
+                    }
+                }
+                self.current_step = AppStep::ConfirmAndDownload;
+                self.current_page = 3;
+                if self.page_three.is_none() {
+                    self.page_three = Some(PageThree::new(self.search_params.limit as usize));
+                }
+                if let Some(ref mut page) = self.page_three {
+                    page.total = self.search_params.limit as usize;
+                }
             }
             _ => {}
         }
@@ -197,7 +226,6 @@ impl App {
     pub fn select_source(&mut self, source: String) {
         self.selected_source = Some(source);
         self.current_step = AppStep::ConfigureFilters;
-        self.current_filter_index = 0;
     }
 
     pub fn next_step(&mut self) {
@@ -230,50 +258,6 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn start_editing_filter(&mut self, filter_name: &str) {
-        self.editing_filter = Some(filter_name.to_string());
-        self.edit_buffer = self
-            .filter_values
-            .get(filter_name)
-            .cloned()
-            .unwrap_or_default();
-    }
-
-    pub fn commit_filter_edit(&mut self) {
-        if let Some(ref filter) = self.editing_filter {
-            self.filter_values
-                .insert(filter.clone(), self.edit_buffer.clone());
-
-            match filter.as_str() {
-                "query" => self.search_params.query = self.edit_buffer.clone(),
-                "resolution" => self.search_params.resolution = Some(self.edit_buffer.clone()),
-                "color" => self.search_params.color = Some(self.edit_buffer.clone()),
-                "orientation" => self.search_params.orientation = Some(self.edit_buffer.clone()),
-                "limit" => {
-                    if let Ok(val) = self.edit_buffer.parse::<u32>() {
-                        self.search_params.limit = val;
-                    }
-                }
-                "sort" => {
-                    self.search_params.sort = match self.edit_buffer.as_str() {
-                        "latest" => Some(SortOrder::Latest),
-                        "popular" => Some(SortOrder::Popular),
-                        "relevant" => Some(SortOrder::Relevant),
-                        "random" => Some(SortOrder::Random),
-                        _ => None,
-                    };
-                }
-                _ => {}
-            }
-        }
-        self.editing_filter = None;
-    }
-
-    pub fn cancel_filter_edit(&mut self) {
-        self.editing_filter = None;
-        self.edit_buffer.clear();
-    }
-
     pub fn handle_page_three_input(&mut self, key: crossterm::event::KeyEvent) {
         use crossterm::event::KeyCode;
 
@@ -285,13 +269,14 @@ impl App {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => {
                 if !page.confirm_cancel {
-                    self.should_quit = true;
+                    self.next_step();
                 }
             }
             KeyCode::Esc => {
                 if page.confirm_cancel {
                     page.cancelled = true;
                     self.current_step = AppStep::ConfigureFilters;
+                    self.current_page = 2;
                 } else {
                     page.handle_esc();
                 }
@@ -366,7 +351,15 @@ impl App {
             3 => {
                 if let Some(ref page_three) = self.page_three {
                     render_page_three(f, page_three, chunks[0]);
-                    help_bar::render_help_bar(f, &HelpBar::for_page_three(), chunks[1]);
+                    if self.current_step == AppStep::Downloading {
+                        help_bar::render_help_bar(
+                            f,
+                            &HelpBar::for_page_three_downloading(),
+                            chunks[1],
+                        );
+                    } else {
+                        help_bar::render_help_bar(f, &HelpBar::for_page_three(), chunks[1]);
+                    }
                 }
             }
             _ => {}
@@ -377,8 +370,11 @@ impl App {
         }
     }
 
-    pub async fn execute_download(&mut self) -> crate::error::Result<()> {
-        use crate::download::DownloadManager;
+    pub async fn execute_download(
+        &mut self,
+        terminal: Arc<TokioMutex<Terminal<CrosstermBackend<Stdout>>>>,
+    ) -> crate::error::Result<()> {
+        use crate::download::{DownloadManager, DownloadStatus};
         use crate::providers;
         use tokio::sync::mpsc;
 
@@ -402,6 +398,15 @@ impl App {
 
         let (progress_tx, mut progress_rx) = mpsc::channel(100);
 
+        if let Some(ref mut page) = self.page_three {
+            page.total = wallpapers.len();
+            page.completed = 0;
+            page.in_progress = 0;
+            page.failed = 0;
+            page.pending = wallpapers.len();
+            page.is_preparing = true;
+        }
+
         let download_handle = tokio::spawn(async move {
             manager
                 .download_wallpapers(provider, wallpapers, download_path, progress_tx)
@@ -409,7 +414,50 @@ impl App {
         });
 
         while let Some(progress) = progress_rx.recv().await {
-            self.download_progress = Some(progress);
+            self.download_progress = Some(progress.clone());
+            if let Some(ref mut page) = self.page_three {
+                page.total = progress.total;
+                page.pending = progress.pending;
+
+                if let Some(ref filename) = progress.current_file {
+                    match progress.status {
+                        DownloadStatus::Pending => {
+                            page.is_preparing = false;
+                            page.add_log(crate::components::page_three::LogEntry::Start {
+                                filename: filename.clone(),
+                            });
+                            page.in_progress += 1;
+                        }
+                        DownloadStatus::Completed => {
+                            page.add_log(crate::components::page_three::LogEntry::Success {
+                                filename: filename.clone(),
+                            });
+                            page.in_progress = page.in_progress.saturating_sub(1);
+                            page.completed += 1;
+                        }
+                        DownloadStatus::Failed => {
+                            page.add_log(crate::components::page_three::LogEntry::Failure {
+                                filename: filename.clone(),
+                                error: "download failed".to_string(),
+                            });
+                            page.in_progress = page.in_progress.saturating_sub(1);
+                            page.failed += 1;
+                        }
+                        DownloadStatus::Downloading => {}
+                    }
+                }
+            }
+
+            let term = terminal.clone();
+            let app = self as *mut App;
+            tokio::task::block_in_place(move || {
+                let mut term = term.blocking_lock();
+                let app = unsafe { &mut *app };
+                term.draw(|f| {
+                    app.draw(f);
+                })
+                .ok();
+            });
         }
 
         let results = download_handle.await.map_err(|e| {

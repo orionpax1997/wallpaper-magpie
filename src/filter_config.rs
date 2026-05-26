@@ -119,18 +119,10 @@ pub fn get_wallhaven_filters() -> SourceFilters {
             },
             FilterField {
                 name: "page".to_string(),
-                display_name: "页码".to_string(),
+                display_name: "下载页数".to_string(),
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
-                placeholder: "页码".to_string(),
-                required: false,
-            },
-            FilterField {
-                name: "per_page".to_string(),
-                display_name: "每页数量".to_string(),
-                filter_type: FilterFieldType::Number,
-                default_value: Some("24".to_string()),
-                placeholder: "每页数量".to_string(),
+                placeholder: "下载页数".to_string(),
                 required: false,
             },
         ],
@@ -285,7 +277,7 @@ mod tests {
     #[test]
     fn test_wallhaven_filter_count() {
         let filters = get_wallhaven_filters();
-        assert_eq!(filters.fields.len(), 12);
+        assert_eq!(filters.fields.len(), 11);
     }
 
     #[test]

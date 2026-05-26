@@ -41,13 +41,17 @@ impl PageTwo {
     }
 
     pub fn next(&mut self) {
-        if self.selected_index < self.filters.fields.len() - 1 {
+        if let Some(ref mut dropdown) = self.dropdown {
+            dropdown.next();
+        } else if self.selected_index < self.filters.fields.len() - 1 {
             self.selected_index += 1;
         }
     }
 
     pub fn previous(&mut self) {
-        if self.selected_index > 0 {
+        if let Some(ref mut dropdown) = self.dropdown {
+            dropdown.previous();
+        } else if self.selected_index > 0 {
             self.selected_index -= 1;
         }
     }
