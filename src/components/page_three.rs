@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
@@ -86,9 +86,10 @@ impl PageThree {
 pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
+        .margin(2)
         .constraints([
             Constraint::Length(3),
-            Constraint::Percentage(100),
+            Constraint::Min(0),
             Constraint::Length(1),
         ])
         .split(area);
@@ -150,6 +151,18 @@ pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
 
     let log_list = List::new(log_items).block(Block::default().title("日志").borders(Borders::ALL));
     f.render_widget(log_list, chunks[1]);
+
+    if !page.confirm_cancel {
+        let help_text = if page.is_preparing {
+            "准备中..."
+        } else {
+            "[Enter] 完成 | [Esc] 取消"
+        };
+        let help = Paragraph::new(help_text)
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(help, chunks[2]);
+    }
 
     if page.confirm_cancel {
         let popup_area = super::modal::centered_rect(60, 20, area);

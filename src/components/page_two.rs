@@ -166,7 +166,14 @@ pub fn render_page_two(f: &mut Frame, page: &PageTwo, area: Rect) {
         .block(Block::default().borders(Borders::ALL).title("筛选条件"));
     f.render_widget(filters_widget, chunks[1]);
 
-    let help = Paragraph::new("↑↓: 切换 | Enter: 确认/下一步 | Esc: 上一步 | e: 编辑")
+    let help_text = if page.dropdown.is_some() {
+        "↑↓: 选择 | Enter: 确认 | Esc: 取消"
+    } else if page.editing_index.is_some() {
+        "Enter: 确认 | Esc: 取消"
+    } else {
+        "↑↓: 切换 | Enter: 确认/下一步 | Esc: 上一步 | e: 编辑"
+    };
+    let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
     f.render_widget(help, chunks[2]);
