@@ -1,6 +1,6 @@
 [package]
 name = "wallpaper-magpie"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["OrionPax <orionpax.1997@outlook.com>"]
 description = "A CLI + TUI tool for collecting wallpapers from multiple sources"
