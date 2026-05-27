@@ -1,11 +1,8 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{
-    backend::CrosstermBackend,
-    Frame, Terminal,
-};
-use std::io::Stdout;
+use ratatui::Frame;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::Mutex as TokioMutex;
 
 use crate::components::modal::{render_modal, Modal, ModalType};
 use crate::components::page_one::render_page_one;
@@ -38,6 +35,9 @@ pub struct App {
     pub should_quit: bool,
     pub download_progress: Option<crate::download::DownloadProgress>,
     pub download_results: Vec<(String, bool)>,
+    pub download_task: Option<tokio::task::JoinHandle<crate::error::Result<Vec<(crate::models::Wallpaper, crate::error::Result<PathBuf>)>>>>,
+    pub download_progress_rx: Option<tokio::sync::mpsc::Receiver<crate::download::DownloadProgress>>,
+    pub download_cancel_token: Option<Arc<AtomicBool>>,
     pub config: AppConfig,
     pub page_two: Option<PageTwo>,
     pub page_three: Option<PageThree>,
@@ -62,6 +62,9 @@ impl Default for App {
             should_quit: false,
             download_progress: None,
             download_results: Vec::new(),
+            download_task: None,
+            download_progress_rx: None,
+            download_cancel_token: None,
             config: AppConfig::default(),
             page_two: None,
             page_three: None,
@@ -265,9 +268,31 @@ impl App {
             None => return,
         };
 
+        if self.current_step == AppStep::Downloading {
+            match key.code {
+                KeyCode::Esc => {
+                    self.cancel_download();
+                    self.current_step = AppStep::ConfirmAndDownload;
+                    if let Some(ref mut page) = self.page_three {
+                        page.cancelled = false;
+                        page.confirm_cancel = false;
+                    }
+                }
+                KeyCode::Up => {
+                    page.scroll_up();
+                }
+                KeyCode::Down => {
+                    page.scroll_down();
+                }
+                _ => {}
+            }
+            return;
+        }
+
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => {
                 if !page.confirm_cancel {
+                    page.is_downloading = true;
                     self.next_step();
                 }
             }
@@ -295,6 +320,21 @@ impl App {
                     page.dismiss_confirm();
                 }
             }
+        }
+    }
+
+    pub fn cancel_download(&mut self) {
+        if let Some(ref cancel) = self.download_cancel_token {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        if let Some(handle) = self.download_task.take() {
+            handle.abort();
+        }
+        self.download_progress_rx = None;
+        self.download_cancel_token = None;
+        self.download_progress = None;
+        if let Some(ref mut page) = self.page_three {
+            page.is_downloading = false;
         }
     }
 
@@ -357,28 +397,18 @@ impl App {
         }
     }
 
-    pub async fn execute_download(
-        &mut self,
-        terminal: Arc<TokioMutex<Terminal<CrosstermBackend<Stdout>>>>,
-    ) -> crate::error::Result<()> {
-        use crate::download::{DownloadManager, DownloadStatus};
+    pub async fn start_download(&mut self) -> crate::error::Result<Vec<crate::models::Wallpaper>> {
         use crate::providers;
-        use tokio::sync::mpsc;
 
-        let source_name = self.selected_source.as_ref().unwrap();
-        let api_key = self.config.get_api_key(source_name).unwrap_or_default();
-        let provider = providers::create_provider(source_name, &api_key).ok_or_else(|| {
+        let source_name = self.selected_source.as_ref().unwrap().clone();
+        let api_key = self.config.get_api_key(&source_name).unwrap_or_default();
+        let provider = providers::create_provider(&source_name, &api_key).ok_or_else(|| {
             crate::error::AppError::ApiKeyRequired {
                 provider: source_name.clone(),
             }
         })?;
 
         let wallpapers = provider.search(&self.search_params).await?;
-
-        let download_path = self.config.expand_download_path().join(source_name);
-        let manager = DownloadManager::new(self.config.concurrent_downloads);
-
-        let (progress_tx, mut progress_rx) = mpsc::channel(100);
 
         if let Some(ref mut page) = self.page_three {
             page.total = wallpapers.len();
@@ -389,69 +419,109 @@ impl App {
             page.is_preparing = true;
         }
 
+        Ok(wallpapers)
+    }
+
+    pub fn begin_download_task(&mut self, wallpapers: Vec<crate::models::Wallpaper>) -> crate::error::Result<()> {
+        use crate::download::DownloadManager;
+        use tokio::sync::mpsc;
+
+        let source_name = self.selected_source.as_ref().unwrap().clone();
+        let api_key = self.config.get_api_key(&source_name).unwrap_or_default();
+        let provider = crate::providers::create_provider(&source_name, &api_key).ok_or_else(|| {
+            crate::error::AppError::ApiKeyRequired {
+                provider: source_name.clone(),
+            }
+        })?;
+
+        let download_path = self.config.expand_download_path().join(&source_name);
+        let manager = DownloadManager::new(self.config.concurrent_downloads);
+
+        let (progress_tx, progress_rx) = mpsc::channel(100);
+        let cancel_token = Arc::new(AtomicBool::new(false));
+
+        let download_cancel = cancel_token.clone();
         let download_handle = tokio::spawn(async move {
             manager
-                .download_wallpapers(provider, wallpapers, download_path, progress_tx)
+                .download_wallpapers(provider, wallpapers, download_path, progress_tx, download_cancel)
                 .await
         });
 
-        while let Some(progress) = progress_rx.recv().await {
-            self.download_progress = Some(progress.clone());
-            if let Some(ref mut page) = self.page_three {
-                page.total = progress.total;
-                page.pending = progress.pending;
+        self.download_task = Some(download_handle);
+        self.download_progress_rx = Some(progress_rx);
+        self.download_cancel_token = Some(cancel_token);
 
-                if let Some(ref filename) = progress.current_file {
-                    match progress.status {
-                        DownloadStatus::Pending => {
-                            page.is_preparing = false;
-                            page.add_log(crate::components::page_three::LogEntry::Start {
-                                filename: filename.clone(),
-                            });
-                            page.in_progress += 1;
+        Ok(())
+    }
+
+    pub fn poll_download_progress(&mut self) {
+        use crate::download::DownloadStatus;
+
+        if let Some(ref mut rx) = self.download_progress_rx {
+            while let Ok(progress) = rx.try_recv() {
+                self.download_progress = Some(progress.clone());
+                if let Some(ref mut page) = self.page_three {
+                    page.total = progress.total;
+                    page.pending = progress.pending;
+
+                    if let Some(ref filename) = progress.current_file {
+                        match progress.status {
+                            DownloadStatus::Pending => {
+                                page.is_preparing = false;
+                                page.add_log(crate::components::page_three::LogEntry::Start {
+                                    filename: filename.clone(),
+                                });
+                                page.in_progress += 1;
+                            }
+                            DownloadStatus::Completed => {
+                                page.add_log(crate::components::page_three::LogEntry::Success {
+                                    filename: filename.clone(),
+                                });
+                                page.in_progress = page.in_progress.saturating_sub(1);
+                                page.completed += 1;
+                            }
+                            DownloadStatus::Failed => {
+                                page.add_log(crate::components::page_three::LogEntry::Failure {
+                                    filename: filename.clone(),
+                                    error: "download failed".to_string(),
+                                });
+                                page.in_progress = page.in_progress.saturating_sub(1);
+                                page.failed += 1;
+                            }
+                            DownloadStatus::Downloading => {}
                         }
-                        DownloadStatus::Completed => {
-                            page.add_log(crate::components::page_three::LogEntry::Success {
-                                filename: filename.clone(),
-                            });
-                            page.in_progress = page.in_progress.saturating_sub(1);
-                            page.completed += 1;
-                        }
-                        DownloadStatus::Failed => {
-                            page.add_log(crate::components::page_three::LogEntry::Failure {
-                                filename: filename.clone(),
-                                error: "download failed".to_string(),
-                            });
-                            page.in_progress = page.in_progress.saturating_sub(1);
-                            page.failed += 1;
-                        }
-                        DownloadStatus::Downloading => {}
                     }
                 }
             }
-
-            let term = terminal.clone();
-            let app = self as *mut App;
-            tokio::task::block_in_place(move || {
-                let mut term = term.blocking_lock();
-                let app = unsafe { &mut *app };
-                term.draw(|f| {
-                    app.draw(f);
-                })
-                .ok();
-            });
         }
+    }
 
-        let results = download_handle.await.map_err(|e| {
-            crate::error::AppError::DownloadError(format!("Download task failed: {}", e))
-        })??;
+    pub fn is_download_complete(&self) -> bool {
+        self.download_task
+            .as_ref()
+            .map(|h| h.is_finished())
+            .unwrap_or(false)
+    }
 
-        self.download_results = results
-            .into_iter()
-            .map(|(wallpaper, result)| (wallpaper.filename, result.is_ok()))
-            .collect();
+    pub async fn finalize_download(&mut self) -> crate::error::Result<()> {
+        if let Some(handle) = self.download_task.take() {
+            let results = handle.await.map_err(|e| {
+                crate::error::AppError::DownloadError(format!("Download task failed: {}", e))
+            })??;
 
-        self.current_step = AppStep::Completed;
+            self.download_results = results
+                .into_iter()
+                .map(|(wallpaper, result)| (wallpaper.filename, result.is_ok()))
+                .collect();
+
+            self.current_step = AppStep::Completed;
+            self.download_progress_rx = None;
+            self.download_cancel_token = None;
+            self.download_progress = None;
+            if let Some(ref mut page) = self.page_three {
+                page.is_downloading = false;
+            }
+        }
 
         Ok(())
     }

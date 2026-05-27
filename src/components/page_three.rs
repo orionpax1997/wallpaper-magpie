@@ -35,6 +35,7 @@ pub struct PageThree {
     pub in_progress: usize,
     pub pending: usize,
     pub is_preparing: bool,
+    pub is_downloading: bool,
     pub logs: Vec<LogEntry>,
     pub cancelled: bool,
     pub confirm_cancel: bool,
@@ -51,6 +52,7 @@ impl PageThree {
             in_progress: 0,
             pending: 0,
             is_preparing: false,
+            is_downloading: false,
             logs: Vec::new(),
             cancelled: false,
             confirm_cancel: false,
@@ -181,7 +183,9 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
     f.render_stateful_widget(scrollbar, chunks[1], &mut page.scrollbar_state);
 
     if !page.confirm_cancel {
-        let help_text = if page.is_preparing {
+        let help_text = if page.is_downloading {
+            "正在下载中... | [Esc] 取消 | [↑↓] 滚动日志"
+        } else if page.is_preparing {
             "准备中..."
         } else {
             "[Enter] 确认下载 | [Esc] 取消 | [↑↓] 滚动日志"

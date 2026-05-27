@@ -118,11 +118,35 @@ async fn run_tui() -> Result<()> {
         }
 
         if app.current_step == wallpaper_magpie::app::AppStep::Downloading
-            && app.download_progress.is_none()
+            && app.download_task.is_none()
         {
-            if let Err(e) = app.execute_download(terminal.clone()).await {
+            let wallpapers = match app.start_download().await {
+                Ok(w) => w,
+                Err(e) => {
+                    app.set_error(e.to_string());
+                    app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
+                    if let Some(ref mut page) = app.page_three {
+                        page.is_downloading = false;
+                    }
+                    continue;
+                }
+            };
+
+            if let Err(e) = app.begin_download_task(wallpapers) {
                 app.set_error(e.to_string());
-                app.current_step = wallpaper_magpie::app::AppStep::ConfigureFilters;
+                app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
+                if let Some(ref mut page) = app.page_three {
+                    page.is_downloading = false;
+                }
+            }
+        }
+
+        app.poll_download_progress();
+
+        if app.is_download_complete() {
+            if let Err(e) = app.finalize_download().await {
+                app.set_error(e.to_string());
+                app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
             }
         }
 
@@ -169,10 +193,11 @@ async fn run_cli_download(args: DownloadArgs) -> Result<()> {
     let manager = DownloadManager::new(config.concurrent_downloads);
 
     let (progress_tx, mut progress_rx) = mpsc::channel(100);
+    let cancel_token = Arc::new(AtomicBool::new(false));
 
     let download_handle = tokio::spawn(async move {
         manager
-            .download_wallpapers(provider, wallpapers, download_path, progress_tx)
+            .download_wallpapers(provider, wallpapers, download_path, progress_tx, cancel_token)
             .await
     });
 
