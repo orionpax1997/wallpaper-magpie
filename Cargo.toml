@@ -18,7 +18,7 @@ name = "wallpaper_magpie"
 path = "src/lib.rs"
 
 [[bin]]
-name = "wallpaper-magpie"
+name = "wallmagpie"
 path = "src/main.rs"
 
 [dependencies]

@@ -123,9 +123,9 @@
                         <Component Id='binary0' Guid='*'>
                             <File
                                 Id='exe0'
-                                Name='wallpaper-magpie.exe'
+                                Name='wallmagpie.exe'
                                 DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\wallpaper-magpie.exe'
+                                Source='$(var.CargoTargetBinDir)\wallmagpie.exe'
                                 KeyPath='yes'/>
                         </Component>
                     </Directory>
@@ -173,7 +173,7 @@
         <!--<Icon Id='ProductICO' SourceFile='wix\Product.ico'/>-->
         <!--<Property Id='ARPPRODUCTICON' Value='ProductICO' />-->
 
-        <Property Id='ARPHELPLINK' Value='https://github.com/yourusername/wallpaper-magpie'/>
+        <Property Id='ARPHELPLINK' Value='https://github.com/orionpax1997/wallpaper-magpie'/>
         
         <UI>
             <UIRef Id='WixUI_FeatureTree'/>

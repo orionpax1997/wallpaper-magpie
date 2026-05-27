@@ -1,4 +1,10 @@
-# wallpaper-magpie
+# wallmagpie
+
+<div align="center">
+
+[English](README.md) | [简体中文](README.zh-cn.md)
+
+</div>
 
 A CLI + TUI wallpaper collection tool written in Rust. Supports downloading wallpapers from Unsplash, Pexels, and Wallhaven.
 
@@ -21,19 +27,19 @@ cargo install --path .
 
 ### TUI Wizard (default)
 ```bash
-wallpaper-magpie
+wallmagpie
 ```
 
 ### CLI Mode
 ```bash
-wallpaper-magpie download --source unsplash --query "nature" --limit 10
+wallmagpie download --source unsplash --query "nature" --limit 10
 ```
 
 ### Configuration
 ```bash
-wallpaper-magpie config              # Show config
-wallpaper-magpie config --edit       # Edit config (TUI)
-wallpaper-magpie config --reset      # Reset to defaults
+wallmagpie config              # Show config
+wallmagpie config --edit       # Edit config (TUI)
+wallmagpie config --reset      # Reset to defaults
 ```
 
 ## Configuration
