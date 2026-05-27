@@ -3,11 +3,11 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(name = "wallmagpie")]
 #[command(about = "A CLI + TUI tool for collecting wallpapers")]
-#[command(version = "0.1.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(disable_help_subcommand = true)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]

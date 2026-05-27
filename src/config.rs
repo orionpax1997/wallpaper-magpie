@@ -25,7 +25,10 @@ impl Default for AppConfig {
 
 impl AppConfig {
     pub fn config_path() -> PathBuf {
-        PathBuf::from("./config.toml")
+        dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("wallpaper-magpie")
+            .join("config.toml")
     }
 
     pub fn load() -> anyhow::Result<Self> {

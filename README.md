@@ -19,6 +19,10 @@ A CLI + TUI wallpaper collection tool written in Rust. Supports downloading wall
 
 ## Installation
 
+Pre-built binaries are available on the [Releases](https://github.com/orionpax1997/wallpaper-magpie/releases) page.
+
+Or build from source:
+
 ```bash
 cargo install --path .
 ```
@@ -44,7 +48,7 @@ wallmagpie config --reset      # Reset to defaults
 
 ## Configuration
 
-Configuration is stored at `./config.toml` (current working directory):
+Configuration is stored at `~/.config/wallpaper-magpie/config.toml`:
 
 ```toml
 download_path = "./wallpapers"

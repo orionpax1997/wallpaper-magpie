@@ -36,14 +36,17 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Download(args) => {
+        None => {
+            run_tui().await?;
+        }
+        Some(Commands::Download(args)) => {
             if args.wizard || args.source.is_none() {
                 run_tui().await?;
             } else {
                 run_cli_download(args).await?;
             }
         }
-        Commands::Config(args) => {
+        Some(Commands::Config(args)) => {
             if args.reset {
                 let config = AppConfig::default();
                 config.save()?;
@@ -55,7 +58,7 @@ async fn main() -> Result<()> {
                 println!("{}", toml::to_string_pretty(&config)?);
             }
         }
-        Commands::Help(args) => {
+        Some(Commands::Help(args)) => {
             print_source_help(&args.source);
         }
     }

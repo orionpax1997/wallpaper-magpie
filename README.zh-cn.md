@@ -19,6 +19,10 @@
 
 ## 安装
 
+预编译版本可在 [Releases](https://github.com/orionpax1997/wallpaper-magpie/releases) 页面下载。
+
+或从源码编译：
+
 ```bash
 cargo install --path .
 ```
@@ -44,7 +48,7 @@ wallmagpie config --reset       # 重置为默认值
 
 ## 配置说明
 
-配置文件位于 `./config.toml`（当前工作目录）：
+配置文件位于 `~/.config/wallpaper-magpie/config.toml`：
 
 ```toml
 download_path = "./wallpapers"
