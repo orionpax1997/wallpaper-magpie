@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["OrionPax <orionpax.1997@outlook.com>"]
 description = "A CLI + TUI tool for collecting wallpapers from multiple sources"
 license = "MIT"
-repository = "https://github.com/yourusername/wallpaper-magpie"
+repository = "https://github.com/orionpax1997/wallpaper-magpie"
 
 [package.metadata.wix]
 upgrade-guid = "754B9BE0-A05A-48CA-A3AA-0CF917EFDEBB"
