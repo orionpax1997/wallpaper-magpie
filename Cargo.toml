@@ -2,10 +2,16 @@
 name = "wallpaper-magpie"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["OrionPax <orionpax.1997@outlook.com>"]
 description = "A CLI + TUI tool for collecting wallpapers from multiple sources"
 license = "MIT"
 repository = "https://github.com/yourusername/wallpaper-magpie"
+
+[package.metadata.wix]
+upgrade-guid = "754B9BE0-A05A-48CA-A3AA-0CF917EFDEBB"
+path-guid = "802E0185-EDF4-415B-8D66-79C75F904371"
+license = false
+eula = false
 
 [lib]
 name = "wallpaper_magpie"
@@ -39,3 +45,9 @@ urlencoding = "2.1"
 [dev-dependencies]
 tokio-test = "0.4"
 mockito = "1.2"
+cargo-dist = "0.31"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
