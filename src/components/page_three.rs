@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
     Frame,
 };
 
@@ -40,7 +40,6 @@ pub struct PageThree {
     pub cancelled: bool,
     pub confirm_cancel: bool,
     pub list_state: ListState,
-    pub scrollbar_state: ScrollbarState,
 }
 
 impl PageThree {
@@ -57,7 +56,6 @@ impl PageThree {
             cancelled: false,
             confirm_cancel: false,
             list_state: ListState::default(),
-            scrollbar_state: ScrollbarState::default(),
         }
     }
 
@@ -174,21 +172,13 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
         .block(Block::default().title("日志").borders(Borders::ALL));
     f.render_stateful_widget(log_list, chunks[1], &mut page.list_state);
 
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-        .thumb_style(Style::default().fg(Color::White));
-    page.scrollbar_state = page.scrollbar_state
-        .content_length(content_len)
-        .position(page.list_state.offset())
-        .viewport_content_length(log_height);
-    f.render_stateful_widget(scrollbar, chunks[1], &mut page.scrollbar_state);
-
     if !page.confirm_cancel {
         let help_text = if page.is_downloading {
-            "正在下载中... | [Esc] 取消 | [↑↓] 滚动日志"
+            "正在下载中... | [Esc] 取消"
         } else if page.is_preparing {
             "准备中..."
         } else {
-            "[Enter] 确认下载 | [Esc] 取消 | [↑↓] 滚动日志"
+            "[Enter] 确认下载 | [Esc] 取消"
         };
         let help = Paragraph::new(help_text)
             .style(Style::default().fg(Color::Gray))
