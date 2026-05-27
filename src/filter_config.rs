@@ -10,6 +10,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "搜索关键词".to_string(),
+                hint: Some("tagname, -tagname, +tag1 +tag2, @username, id:123, type:png/jpg".to_string()),
                 required: false,
             },
             FilterField {
@@ -28,6 +29,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 },
                 default_value: Some("111".to_string()),
                 placeholder: "选择分类".to_string(),
+                hint: Some("1=开启, 0=关闭 (general/anime/people)".to_string()),
                 required: false,
             },
             FilterField {
@@ -38,6 +40,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 },
                 default_value: Some("SFW".to_string()),
                 placeholder: "选择纯度".to_string(),
+                hint: Some("SFW=安全, Sketchy=可疑, NSFW需API Key".to_string()),
                 required: false,
             },
             FilterField {
@@ -53,8 +56,9 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                         "toplist".to_string(),
                     ],
                 },
-                default_value: Some("date_added".to_string()),
+                default_value: Some("toplist".to_string()),
                 placeholder: "选择排序方式".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -65,6 +69,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 },
                 default_value: Some("desc".to_string()),
                 placeholder: "选择顺序".to_string(),
+                hint: Some("desc=降序, asc=升序".to_string()),
                 required: false,
             },
             FilterField {
@@ -83,6 +88,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 },
                 default_value: Some("1M".to_string()),
                 placeholder: "选择时间范围".to_string(),
+                hint: Some("排序方式需设为 toplist".to_string()),
                 required: false,
             },
             FilterField {
@@ -91,6 +97,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: 1920x1080".to_string(),
+                hint: Some("最小宽x高，如 1920x1080".to_string()),
                 required: false,
             },
             FilterField {
@@ -99,6 +106,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: 1920x1080,2560x1440".to_string(),
+                hint: Some("精确分辨率，多个用逗号分隔".to_string()),
                 required: false,
             },
             FilterField {
@@ -107,6 +115,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: 16x9,16x10".to_string(),
+                hint: Some("宽x高比例，如 16x9, 16x10".to_string()),
                 required: false,
             },
             FilterField {
@@ -115,6 +124,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: 660000".to_string(),
+                hint: Some("6位十六进制颜色码，如 ffffff, 000000, 0099cc".to_string()),
                 required: false,
             },
             FilterField {
@@ -123,6 +133,7 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
                 placeholder: "下载页数".to_string(),
+                hint: None,
                 required: false,
             },
         ],
@@ -139,6 +150,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "搜索关键词".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -147,6 +159,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
                 placeholder: "页码".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -155,6 +168,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Number,
                 default_value: Some("10".to_string()),
                 placeholder: "每页数量".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -165,6 +179,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 },
                 default_value: Some("relevant".to_string()),
                 placeholder: "选择排序".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -179,6 +194,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 },
                 default_value: None,
                 placeholder: "选择方向".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -187,6 +203,7 @@ pub fn get_unsplash_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: #000000".to_string(),
+                hint: None,
                 required: false,
             },
         ],
@@ -203,6 +220,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "搜索关键词".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -211,6 +229,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
                 placeholder: "页码".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -219,6 +238,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Number,
                 default_value: Some("10".to_string()),
                 placeholder: "每页数量".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -233,6 +253,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 },
                 default_value: None,
                 placeholder: "选择方向".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -247,6 +268,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 },
                 default_value: None,
                 placeholder: "选择尺寸".to_string(),
+                hint: None,
                 required: false,
             },
             FilterField {
@@ -255,6 +277,7 @@ pub fn get_pexels_filters() -> SourceFilters {
                 filter_type: FilterFieldType::Text,
                 default_value: None,
                 placeholder: "如: red, #FF0000".to_string(),
+                hint: None,
                 required: false,
             },
         ],

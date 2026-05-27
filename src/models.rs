@@ -112,6 +112,7 @@ pub struct FilterField {
     pub filter_type: FilterFieldType,
     pub default_value: Option<String>,
     pub placeholder: String,
+    pub hint: Option<String>,
     pub required: bool,
 }
 

@@ -114,6 +114,7 @@ pub fn render_page_two(f: &mut Frame, page: &PageTwo, area: Rect) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(0),
+            Constraint::Length(2),
             Constraint::Length(3),
         ])
         .split(area);
@@ -166,6 +167,20 @@ pub fn render_page_two(f: &mut Frame, page: &PageTwo, area: Rect) {
         .block(Block::default().borders(Borders::ALL).title("筛选条件"));
     f.render_widget(filters_widget, chunks[1]);
 
+    if let Some(field) = page.filters.fields.get(page.selected_index) {
+        if let Some(hint) = &field.hint {
+            let hint_text = Paragraph::new(format!("💡 {}", hint))
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center);
+            f.render_widget(hint_text, chunks[2]);
+        } else {
+            let placeholder = Paragraph::new("")
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center);
+            f.render_widget(placeholder, chunks[2]);
+        }
+    }
+
     let help_text = if page.dropdown.is_some() {
         "↑↓: 选择 | Enter: 确认 | Esc: 取消"
     } else if page.editing_index.is_some() {
@@ -176,7 +191,7 @@ pub fn render_page_two(f: &mut Frame, page: &PageTwo, area: Rect) {
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
-    f.render_widget(help, chunks[2]);
+    f.render_widget(help, chunks[3]);
 
     if let Some(ref dropdown) = page.dropdown {
         render_dropdown(f, dropdown);
