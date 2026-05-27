@@ -1,51 +1,24 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::error::{AppError, Result};
-
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AppConfig {
     pub download_path: String,
     pub concurrent_downloads: usize,
-    pub sources: HashMap<String, SourceConfig>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct SourceConfig {
-    pub enabled: bool,
-    pub api_key: String,
+    pub unsplash_api_key: Option<String>,
+    pub pexels_api_key: Option<String>,
+    pub wallhaven_api_key: Option<String>,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
-        let mut sources = HashMap::new();
-        sources.insert(
-            "unsplash".to_string(),
-            SourceConfig {
-                enabled: true,
-                api_key: String::new(),
-            },
-        );
-        sources.insert(
-            "pexels".to_string(),
-            SourceConfig {
-                enabled: false,
-                api_key: String::new(),
-            },
-        );
-        sources.insert(
-            "wallhaven".to_string(),
-            SourceConfig {
-                enabled: true,
-                api_key: String::new(),
-            },
-        );
-
         Self {
             download_path: "./wallpapers".to_string(),
             concurrent_downloads: 3,
-            sources,
+            unsplash_api_key: None,
+            pexels_api_key: None,
+            wallhaven_api_key: None,
         }
     }
 }
@@ -55,40 +28,51 @@ impl AppConfig {
         PathBuf::from("./config.toml")
     }
 
-    pub fn load() -> Result<Self> {
+    pub fn load() -> anyhow::Result<Self> {
         let path = Self::config_path();
-
         if !path.exists() {
             return Ok(Self::default());
         }
-
-        let content = std::fs::read_to_string(&path)
-            .map_err(|e| AppError::ConfigError(format!("Failed to read config: {}", e)))?;
-
-        let config: AppConfig = toml::from_str(&content)
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse config: {}", e)))?;
-
+        let content = std::fs::read_to_string(&path)?;
+        let config: AppConfig = toml::from_str(&content)?;
         Ok(config)
     }
 
-    pub fn save(&self) -> Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let path = Self::config_path();
-
-        let content = toml::to_string_pretty(self)
-            .map_err(|e| AppError::ConfigError(format!("Failed to serialize config: {}", e)))?;
-
-        std::fs::write(&path, content)
-            .map_err(|e| AppError::ConfigError(format!("Failed to write config: {}", e)))?;
-
+        let content = toml::to_string_pretty(self)?;
+        std::fs::write(&path, content)?;
         Ok(())
     }
 
-    pub fn get_source_config(&self, name: &str) -> Option<&SourceConfig> {
-        self.sources.get(name)
+    pub fn has_api_key(&self, source: &str) -> bool {
+        match source {
+            "unsplash" => self
+                .unsplash_api_key
+                .as_ref()
+                .is_some_and(|k| !k.is_empty()),
+            "pexels" => self.pexels_api_key.as_ref().is_some_and(|k| !k.is_empty()),
+            "wallhaven" => true,
+            _ => false,
+        }
     }
 
-    pub fn set_source_config(&mut self, name: &str, source_config: SourceConfig) {
-        self.sources.insert(name.to_string(), source_config);
+    pub fn get_api_key(&self, source: &str) -> Option<String> {
+        match source {
+            "unsplash" => self.unsplash_api_key.clone(),
+            "pexels" => self.pexels_api_key.clone(),
+            "wallhaven" => self.wallhaven_api_key.clone(),
+            _ => None,
+        }
+    }
+
+    pub fn set_api_key(&mut self, source: &str, key: String) {
+        match source {
+            "unsplash" => self.unsplash_api_key = Some(key),
+            "pexels" => self.pexels_api_key = Some(key),
+            "wallhaven" => self.wallhaven_api_key = Some(key),
+            _ => {}
+        }
     }
 
     pub fn expand_download_path(&self) -> PathBuf {

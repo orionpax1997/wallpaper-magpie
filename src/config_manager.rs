@@ -1,4 +1,4 @@
-pub use crate::models::AppConfig;
+pub use crate::config::AppConfig;
 
 pub struct ConfigManager;
 

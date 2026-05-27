@@ -5,9 +5,7 @@ fn test_default_config() {
     let config = AppConfig::default();
     assert_eq!(config.download_path, "./wallpapers");
     assert_eq!(config.concurrent_downloads, 3);
-    assert!(config.sources.contains_key("unsplash"));
-    assert!(config.sources.contains_key("pexels"));
-    assert!(config.sources.contains_key("wallhaven"));
+    assert!(config.has_api_key("wallhaven"));
 }
 
 #[test]

@@ -140,11 +140,8 @@ async fn run_cli_download(args: DownloadArgs) -> Result<()> {
     let config = AppConfig::load()?;
 
     let source_name = args.source.unwrap();
-    let source_config = config
-        .get_source_config(&source_name)
-        .ok_or_else(|| anyhow::anyhow!("Source not configured"))?;
-
-    let provider = providers::create_provider(&source_name, source_config)
+    let api_key = config.get_api_key(&source_name).unwrap_or_default();
+    let provider = providers::create_provider(&source_name, &api_key)
         .ok_or_else(|| anyhow::anyhow!("Failed to create provider - check API key"))?;
 
     let params = SearchParams {

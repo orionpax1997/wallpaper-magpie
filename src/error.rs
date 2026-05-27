@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("API request failed: {status_code} - {message}")]
@@ -33,4 +34,5 @@ pub enum AppError {
     ConfigParseError(#[from] config::ConfigError),
 }
 
+#[allow(unused)]
 pub type Result<T> = std::result::Result<T, AppError>;
