@@ -5,6 +5,15 @@ pub fn get_wallhaven_filters() -> SourceFilters {
         source_name: "wallhaven".to_string(),
         fields: vec![
             FilterField {
+                name: "page".to_string(),
+                display_name: "下载页数".to_string(),
+                filter_type: FilterFieldType::Number,
+                default_value: Some("1".to_string()),
+                placeholder: "下载页数".to_string(),
+                hint: None,
+                required: false,
+            },
+            FilterField {
                 name: "q".to_string(),
                 display_name: "关键词".to_string(),
                 filter_type: FilterFieldType::Text,
@@ -127,15 +136,6 @@ pub fn get_wallhaven_filters() -> SourceFilters {
                 hint: Some("6位十六进制颜色码，如 ffffff, 000000, 0099cc".to_string()),
                 required: false,
             },
-            FilterField {
-                name: "page".to_string(),
-                display_name: "下载页数".to_string(),
-                filter_type: FilterFieldType::Number,
-                default_value: Some("1".to_string()),
-                placeholder: "下载页数".to_string(),
-                hint: None,
-                required: false,
-            },
         ],
     }
 }
@@ -145,20 +145,20 @@ pub fn get_unsplash_filters() -> SourceFilters {
         source_name: "unsplash".to_string(),
         fields: vec![
             FilterField {
-                name: "query".to_string(),
-                display_name: "关键词".to_string(),
-                filter_type: FilterFieldType::Text,
-                default_value: None,
-                placeholder: "搜索关键词".to_string(),
-                hint: None,
-                required: false,
-            },
-            FilterField {
                 name: "page".to_string(),
                 display_name: "页码".to_string(),
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
                 placeholder: "页码".to_string(),
+                hint: None,
+                required: false,
+            },
+            FilterField {
+                name: "query".to_string(),
+                display_name: "关键词".to_string(),
+                filter_type: FilterFieldType::Text,
+                default_value: None,
+                placeholder: "搜索关键词".to_string(),
                 hint: None,
                 required: false,
             },
@@ -215,20 +215,20 @@ pub fn get_pexels_filters() -> SourceFilters {
         source_name: "pexels".to_string(),
         fields: vec![
             FilterField {
-                name: "query".to_string(),
-                display_name: "关键词".to_string(),
-                filter_type: FilterFieldType::Text,
-                default_value: None,
-                placeholder: "搜索关键词".to_string(),
-                hint: None,
-                required: false,
-            },
-            FilterField {
                 name: "page".to_string(),
                 display_name: "页码".to_string(),
                 filter_type: FilterFieldType::Number,
                 default_value: Some("1".to_string()),
                 placeholder: "页码".to_string(),
+                hint: None,
+                required: false,
+            },
+            FilterField {
+                name: "query".to_string(),
+                display_name: "关键词".to_string(),
+                filter_type: FilterFieldType::Text,
+                default_value: None,
+                placeholder: "搜索关键词".to_string(),
                 hint: None,
                 required: false,
             },

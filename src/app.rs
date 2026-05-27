@@ -214,6 +214,8 @@ impl App {
                 }
                 if let Some(ref mut page) = self.page_three {
                     page.total = self.search_params.limit as usize;
+                    page.confirm_cancel = false;
+                    page.cancelled = false;
                 }
             }
             _ => {}

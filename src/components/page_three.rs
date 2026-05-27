@@ -156,7 +156,7 @@ pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
         let help_text = if page.is_preparing {
             "准备中..."
         } else {
-            "[Enter] 完成 | [Esc] 取消"
+            "[Enter] 确认下载 | [Esc] 取消"
         };
         let help = Paragraph::new(help_text)
             .style(Style::default().fg(Color::Gray))
