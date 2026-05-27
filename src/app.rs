@@ -280,6 +280,16 @@ impl App {
                     page.handle_esc();
                 }
             }
+            KeyCode::Up => {
+                if !page.confirm_cancel {
+                    page.scroll_up();
+                }
+            }
+            KeyCode::Down => {
+                if !page.confirm_cancel {
+                    page.scroll_down();
+                }
+            }
             _ => {
                 if page.confirm_cancel {
                     page.dismiss_confirm();
@@ -335,7 +345,7 @@ impl App {
                 }
             }
             3 => {
-                if let Some(ref page_three) = self.page_three {
+                if let Some(ref mut page_three) = self.page_three {
                     render_page_three(f, page_three, area);
                 }
             }

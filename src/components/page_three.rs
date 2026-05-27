@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,
 };
 
@@ -38,6 +38,8 @@ pub struct PageThree {
     pub logs: Vec<LogEntry>,
     pub cancelled: bool,
     pub confirm_cancel: bool,
+    pub list_state: ListState,
+    pub scrollbar_state: ScrollbarState,
 }
 
 impl PageThree {
@@ -52,6 +54,8 @@ impl PageThree {
             logs: Vec::new(),
             cancelled: false,
             confirm_cancel: false,
+            list_state: ListState::default(),
+            scrollbar_state: ScrollbarState::default(),
         }
     }
 
@@ -68,6 +72,23 @@ impl PageThree {
             }
         }
         self.logs.push(entry);
+        self.scroll_to_bottom();
+    }
+
+    pub fn scroll_to_bottom(&mut self) {
+        if self.logs.is_empty() {
+            return;
+        }
+        *self.list_state.offset_mut() = self.logs.len().saturating_sub(1);
+    }
+
+    pub fn scroll_up(&mut self) {
+        let new_offset = self.list_state.offset().saturating_sub(1);
+        *self.list_state.offset_mut() = new_offset;
+    }
+
+    pub fn scroll_down(&mut self) {
+        *self.list_state.offset_mut() = self.list_state.offset() + 1;
     }
 
     pub fn handle_esc(&mut self) {
@@ -83,13 +104,13 @@ impl PageThree {
     }
 }
 
-pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
+pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
         .constraints([
             Constraint::Length(3),
-            Constraint::Min(0),
+            Constraint::Min(6),
             Constraint::Length(1),
         ])
         .split(area);
@@ -128,35 +149,42 @@ pub fn render_page_three(f: &mut Frame, page: &PageThree, area: Rect) {
         .block(Block::default().title("下载进度").borders(Borders::ALL));
     f.render_widget(stats, chunks[0]);
 
-    let log_range_start: usize = page.logs.len().saturating_sub(10);
     let log_items: Vec<ListItem> = if page.is_preparing {
         (0..page.total)
             .map(|i| ListItem::new(format!("\u{25B6} 正在准备下载 {} ...", i + 1)))
             .collect()
     } else {
-        let items: Vec<ListItem> = page
-            .logs
+        page.logs
             .iter()
-            .skip(log_range_start)
             .map(|log| ListItem::new(log.to_string()))
-            .collect();
-        let remaining: usize = 10usize.saturating_sub(items.len());
-        let start_idx = log_range_start + items.len();
-        let mut result = items;
-        for i in 0..remaining {
-            result.push(ListItem::new(format!("\u{25CB} 等待下载 {} ...", start_idx + i + 1)));
-        }
-        result
+            .collect()
     };
 
-    let log_list = List::new(log_items).block(Block::default().title("日志").borders(Borders::ALL));
-    f.render_widget(log_list, chunks[1]);
+    let log_height = chunks[1].height as usize;
+    let content_len = if page.is_preparing { page.total } else { page.logs.len() };
+    let max_offset = content_len.saturating_sub(log_height);
+
+    if page.list_state.offset() > max_offset {
+        *page.list_state.offset_mut() = max_offset;
+    }
+
+    let log_list = List::new(log_items)
+        .block(Block::default().title("日志").borders(Borders::ALL));
+    f.render_stateful_widget(log_list, chunks[1], &mut page.list_state);
+
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .thumb_style(Style::default().fg(Color::White));
+    page.scrollbar_state = page.scrollbar_state
+        .content_length(content_len)
+        .position(page.list_state.offset())
+        .viewport_content_length(log_height);
+    f.render_stateful_widget(scrollbar, chunks[1], &mut page.scrollbar_state);
 
     if !page.confirm_cancel {
         let help_text = if page.is_preparing {
             "准备中..."
         } else {
-            "[Enter] 确认下载 | [Esc] 取消"
+            "[Enter] 确认下载 | [Esc] 取消 | [↑↓] 滚动日志"
         };
         let help = Paragraph::new(help_text)
             .style(Style::default().fg(Color::Gray))
