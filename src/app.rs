@@ -35,6 +35,8 @@ pub struct App {
     pub should_quit: bool,
     pub download_progress: Option<crate::download::DownloadProgress>,
     pub download_results: Vec<(String, bool)>,
+    pub search_task: Option<std::thread::JoinHandle<()>>,
+    pub search_result_rx: Option<tokio::sync::mpsc::Receiver<crate::error::Result<Vec<crate::models::Wallpaper>>>>,
     pub download_task: Option<tokio::task::JoinHandle<crate::error::Result<Vec<(crate::models::Wallpaper, crate::error::Result<PathBuf>)>>>>,
     pub download_progress_rx: Option<tokio::sync::mpsc::Receiver<crate::download::DownloadProgress>>,
     pub download_cancel_token: Option<Arc<AtomicBool>>,
@@ -62,6 +64,8 @@ impl Default for App {
             should_quit: false,
             download_progress: None,
             download_results: Vec::new(),
+            search_task: None,
+            search_result_rx: None,
             download_task: None,
             download_progress_rx: None,
             download_cancel_token: None,
@@ -292,6 +296,7 @@ impl App {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => {
                 if !page.confirm_cancel {
+                    page.is_searching = true;
                     page.is_downloading = true;
                     self.next_step();
                 }
@@ -330,11 +335,17 @@ impl App {
         if let Some(handle) = self.download_task.take() {
             handle.abort();
         }
+        if let Some(handle) = self.search_task.take() {
+            handle.join().ok();
+        }
         self.download_progress_rx = None;
         self.download_cancel_token = None;
         self.download_progress = None;
+        self.search_result_rx = None;
         if let Some(ref mut page) = self.page_three {
             page.is_downloading = false;
+            page.is_searching = false;
+            page.is_preparing = false;
         }
     }
 
@@ -397,29 +408,55 @@ impl App {
         }
     }
 
-    pub async fn start_download(&mut self) -> crate::error::Result<Vec<crate::models::Wallpaper>> {
+    pub fn start_search_task(&mut self) {
         use crate::providers;
+        use tokio::sync::mpsc;
 
         let source_name = self.selected_source.as_ref().unwrap().clone();
         let api_key = self.config.get_api_key(&source_name).unwrap_or_default();
-        let provider = providers::create_provider(&source_name, &api_key).ok_or_else(|| {
-            crate::error::AppError::ApiKeyRequired {
-                provider: source_name.clone(),
+        let search_params = self.search_params.clone();
+
+        let (tx, rx) = mpsc::channel(1);
+
+        let task_handle = std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let provider = providers::create_provider(&source_name, &api_key);
+                let result = match provider {
+                    Some(p) => p.search(&search_params).await,
+                    None => Err(crate::error::AppError::ApiKeyRequired {
+                        provider: source_name.clone(),
+                    }),
+                };
+                let _ = tx.send(result).await;
+            });
+        });
+
+        self.search_result_rx = Some(rx);
+        self.search_task = Some(task_handle);
+    }
+
+    pub fn poll_search_result(&mut self) -> Option<crate::error::Result<Vec<crate::models::Wallpaper>>> {
+        if let Some(ref mut rx) = self.search_result_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.search_task = None;
+                self.search_result_rx = None;
+                return Some(result);
             }
-        })?;
+        }
+        None
+    }
 
-        let wallpapers = provider.search(&self.search_params).await?;
-
+    pub fn apply_search_results(&mut self, wallpapers: &[crate::models::Wallpaper]) {
         if let Some(ref mut page) = self.page_three {
             page.total = wallpapers.len();
             page.completed = 0;
             page.in_progress = 0;
             page.failed = 0;
             page.pending = wallpapers.len();
+            page.is_searching = false;
             page.is_preparing = true;
         }
-
-        Ok(wallpapers)
     }
 
     pub fn begin_download_task(&mut self, wallpapers: Vec<crate::models::Wallpaper>) -> crate::error::Result<()> {
@@ -518,6 +555,8 @@ impl App {
             self.download_progress_rx = None;
             self.download_cancel_token = None;
             self.download_progress = None;
+            self.search_task = None;
+            self.search_result_rx = None;
             if let Some(ref mut page) = self.page_three {
                 page.is_downloading = false;
             }

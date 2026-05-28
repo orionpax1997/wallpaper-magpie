@@ -34,6 +34,7 @@ pub struct PageThree {
     pub failed: usize,
     pub in_progress: usize,
     pub pending: usize,
+    pub is_searching: bool,
     pub is_preparing: bool,
     pub is_downloading: bool,
     pub logs: Vec<LogEntry>,
@@ -50,6 +51,7 @@ impl PageThree {
             failed: 0,
             in_progress: 0,
             pending: 0,
+            is_searching: false,
             is_preparing: false,
             is_downloading: false,
             logs: Vec::new(),
@@ -132,7 +134,9 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
         .count()
         .saturating_sub(completed + failed);
 
-    let stats_text = if page.is_preparing {
+    let stats_text = if page.is_searching {
+        "正在搜索...".to_string()
+    } else if page.is_preparing {
         format!("总数: {}  准备中: {} ...", page.total, page.total)
     } else {
         format!(
@@ -149,10 +153,8 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
         .block(Block::default().title("下载进度").borders(Borders::ALL));
     f.render_widget(stats, chunks[0]);
 
-    let log_items: Vec<ListItem> = if page.is_preparing {
-        (0..page.total)
-            .map(|i| ListItem::new(format!("\u{25B6} 正在准备下载 {} ...", i + 1)))
-            .collect()
+    let log_items: Vec<ListItem> = if page.is_searching {
+        vec![ListItem::new("\u{25B6} 正在搜索图片...")]
     } else {
         page.logs
             .iter()
@@ -161,7 +163,7 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
     };
 
     let log_height = chunks[1].height as usize;
-    let content_len = if page.is_preparing { page.total } else { page.logs.len() };
+    let content_len = if page.is_searching { 1 } else { page.logs.len() };
     let max_offset = content_len.saturating_sub(log_height);
 
     if page.list_state.offset() > max_offset {
@@ -173,7 +175,9 @@ pub fn render_page_three(f: &mut Frame, page: &mut PageThree, area: Rect) {
     f.render_stateful_widget(log_list, chunks[1], &mut page.list_state);
 
     if !page.confirm_cancel {
-        let help_text = if page.is_downloading {
+        let help_text = if page.is_searching {
+            "正在搜索... | [Esc] 取消"
+        } else if page.is_downloading {
             "正在下载中... | [Esc] 取消"
         } else if page.is_preparing {
             "准备中..."

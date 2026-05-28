@@ -7,7 +7,7 @@ pub use crate::config::AppConfig;
 use crate::error::Result;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SearchParams {
     pub query: String,
     pub limit: u32,

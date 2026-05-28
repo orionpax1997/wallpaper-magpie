@@ -121,25 +121,38 @@ async fn run_tui() -> Result<()> {
         }
 
         if app.current_step == wallpaper_magpie::app::AppStep::Downloading
+            && app.search_task.is_none()
             && app.download_task.is_none()
         {
-            let wallpapers = match app.start_download().await {
-                Ok(w) => w,
-                Err(e) => {
-                    app.set_error(e.to_string());
-                    app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
-                    if let Some(ref mut page) = app.page_three {
-                        page.is_downloading = false;
-                    }
-                    continue;
-                }
-            };
+            app.start_search_task();
+        }
 
-            if let Err(e) = app.begin_download_task(wallpapers) {
-                app.set_error(e.to_string());
-                app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
-                if let Some(ref mut page) = app.page_three {
-                    page.is_downloading = false;
+        if app.current_step == wallpaper_magpie::app::AppStep::Downloading
+            && app.download_task.is_none()
+        {
+            if let Some(result) = app.poll_search_result() {
+                match result {
+                    Ok(wallpapers) => {
+                        app.apply_search_results(&wallpapers);
+                        if let Err(e) = app.begin_download_task(wallpapers) {
+                            app.set_error(e.to_string());
+                            app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
+                            if let Some(ref mut page) = app.page_three {
+                                page.is_downloading = false;
+                                page.is_searching = false;
+                                page.is_preparing = false;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        app.set_error(e.to_string());
+                        app.current_step = wallpaper_magpie::app::AppStep::ConfirmAndDownload;
+                        if let Some(ref mut page) = app.page_three {
+                            page.is_downloading = false;
+                            page.is_searching = false;
+                            page.is_preparing = false;
+                        }
+                    }
                 }
             }
         }
